@@ -3,7 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { DishCard } from '@/components/recipes/DishCard';
 import { RecipeModal } from '@/components/recipes/RecipeModal';
 import { useRecipes } from '@/context/RecipeContext';
-import { Recipe, DAYS_OF_WEEK } from '@/types/recipe';
+import { Recipe, DAYS_OF_WEEK, MEAL_TYPES, mealTypeConfig, MealType } from '@/types/recipe';
 import { Button } from '@/components/ui/button';
 import { Shuffle, Trash2, CalendarDays, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,9 @@ export default function WeeklyMenu() {
   const { weeklyMenu, generateWeeklyMenu, clearWeeklyMenu, recipes } = useRecipes();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
-  const hasMenu = Object.values(weeklyMenu).some(dish => dish !== null);
+  const hasMenu = Object.values(weeklyMenu).some(dayMeals => 
+    dayMeals.breakfast !== null || dayMeals.lunch !== null || dayMeals.dinner !== null
+  );
   const hasRecipes = recipes.length > 0;
 
   return (
@@ -79,38 +81,53 @@ export default function WeeklyMenu() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {DAYS_OF_WEEK.map((day, index) => {
-            const dish = weeklyMenu[day];
+        <div className="space-y-6">
+          {DAYS_OF_WEEK.map((day, dayIndex) => {
+            const dayMeals = weeklyMenu[day];
             return (
               <div
                 key={day}
                 className={cn(
                   'rounded-3xl p-1 animate-fade-in',
-                  dayColors[index]
+                  dayColors[dayIndex]
                 )}
-                style={{ animationDelay: `${index * 0.08}s` }}
+                style={{ animationDelay: `${dayIndex * 0.08}s` }}
               >
                 <div className="bg-card rounded-[1.25rem] p-4">
                   {/* Day header */}
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xl">{dayEmojis[index]}</span>
+                    <span className="text-xl">{dayEmojis[dayIndex]}</span>
                     <h3 className="font-display font-bold text-lg">{day}</h3>
                   </div>
 
-                  {/* Dish card */}
-                  {dish ? (
-                    <DishCard
-                      recipe={dish}
-                      onClick={() => setSelectedRecipe(dish)}
-                      compact
-                      className="shadow-none hover:shadow-soft"
-                    />
-                  ) : (
-                    <div className="h-24 rounded-2xl bg-muted/50 flex items-center justify-center">
-                      <p className="text-muted-foreground text-sm">No dish</p>
-                    </div>
-                  )}
+                  {/* Meals grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {MEAL_TYPES.map((mealType) => {
+                      const dish = dayMeals[mealType];
+                      const config = mealTypeConfig[mealType];
+                      
+                      return (
+                        <div key={mealType} className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{config.emoji}</span>
+                            <span className="font-medium">{config.label}</span>
+                          </div>
+                          {dish ? (
+                            <DishCard
+                              recipe={dish}
+                              onClick={() => setSelectedRecipe(dish)}
+                              compact
+                              className="shadow-none hover:shadow-soft"
+                            />
+                          ) : (
+                            <div className="h-20 rounded-2xl bg-muted/50 flex items-center justify-center">
+                              <p className="text-muted-foreground text-sm">No dish</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
