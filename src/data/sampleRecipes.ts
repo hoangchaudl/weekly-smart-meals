@@ -4,6 +4,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '1',
     name: 'Lemon Herb Chicken',
+    mealType: 'dinner',
     ingredients: [
       { id: '1a', name: 'Chicken breast', amount: 500, unit: 'g', category: 'protein' },
       { id: '1b', name: 'Lemon', amount: 2, unit: 'pcs', category: 'vegetables_fruits' },
@@ -25,6 +26,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '2',
     name: 'Veggie Stir-Fry',
+    mealType: 'lunch',
     ingredients: [
       { id: '2a', name: 'Broccoli', amount: 300, unit: 'g', category: 'vegetables_fruits' },
       { id: '2b', name: 'Bell peppers', amount: 2, unit: 'pcs', category: 'vegetables_fruits' },
@@ -48,6 +50,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '3',
     name: 'Beef Bolognese',
+    mealType: 'dinner',
     ingredients: [
       { id: '3a', name: 'Ground beef', amount: 500, unit: 'g', category: 'protein' },
       { id: '3b', name: 'Canned tomatoes', amount: 400, unit: 'g', category: 'vegetables_fruits' },
@@ -71,6 +74,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '4',
     name: 'Thai Green Curry',
+    mealType: 'dinner',
     ingredients: [
       { id: '4a', name: 'Chicken thigh', amount: 400, unit: 'g', category: 'protein' },
       { id: '4b', name: 'Coconut milk', amount: 400, unit: 'ml', category: 'others' },
@@ -94,6 +98,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '5',
     name: 'Mediterranean Salmon',
+    mealType: 'lunch',
     ingredients: [
       { id: '5a', name: 'Salmon fillet', amount: 400, unit: 'g', category: 'protein' },
       { id: '5b', name: 'Cherry tomatoes', amount: 200, unit: 'g', category: 'vegetables_fruits' },
@@ -117,6 +122,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '6',
     name: 'Honey Garlic Tofu',
+    mealType: 'lunch',
     ingredients: [
       { id: '6a', name: 'Firm tofu', amount: 400, unit: 'g', category: 'protein' },
       { id: '6b', name: 'Honey', amount: 3, unit: 'tbsp', category: 'seasonings' },
@@ -140,6 +146,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '7',
     name: 'Mushroom Risotto',
+    mealType: 'dinner',
     ingredients: [
       { id: '7a', name: 'Arborio rice', amount: 300, unit: 'g', category: 'others' },
       { id: '7b', name: 'Mixed mushrooms', amount: 300, unit: 'g', category: 'vegetables_fruits' },
@@ -163,6 +170,7 @@ export const sampleRecipes: Recipe[] = [
   {
     id: '8',
     name: 'Spicy Shrimp Tacos',
+    mealType: 'dinner',
     ingredients: [
       { id: '8a', name: 'Shrimp', amount: 400, unit: 'g', category: 'protein' },
       { id: '8b', name: 'Corn tortillas', amount: 8, unit: 'pcs', category: 'others' },
@@ -182,5 +190,75 @@ export const sampleRecipes: Recipe[] = [
     prepTime: 25,
     storageType: 'fridge',
     batchServings: 4,
+  },
+  {
+    id: '9',
+    name: 'Overnight Oats',
+    mealType: 'breakfast',
+    ingredients: [
+      { id: '9a', name: 'Rolled oats', amount: 100, unit: 'g', category: 'others' },
+      { id: '9b', name: 'Greek yogurt', amount: 150, unit: 'g', category: 'protein' },
+      { id: '9c', name: 'Milk', amount: 150, unit: 'ml', category: 'others' },
+      { id: '9d', name: 'Honey', amount: 2, unit: 'tbsp', category: 'seasonings' },
+      { id: '9e', name: 'Mixed berries', amount: 100, unit: 'g', category: 'vegetables_fruits' },
+      { id: '9f', name: 'Chia seeds', amount: 1, unit: 'tbsp', category: 'others' },
+    ],
+    steps: [
+      'Combine oats, yogurt, milk, and chia seeds in a jar',
+      'Add honey and stir well',
+      'Cover and refrigerate overnight',
+      'Top with fresh berries before serving',
+      'Can add nuts or granola for crunch',
+    ],
+    prepTime: 5,
+    storageType: 'fridge',
+    batchServings: 2,
+  },
+  {
+    id: '10',
+    name: 'Avocado Toast',
+    mealType: 'breakfast',
+    ingredients: [
+      { id: '10a', name: 'Sourdough bread', amount: 4, unit: 'slices', category: 'others' },
+      { id: '10b', name: 'Avocado', amount: 2, unit: 'pcs', category: 'vegetables_fruits' },
+      { id: '10c', name: 'Eggs', amount: 4, unit: 'pcs', category: 'protein' },
+      { id: '10d', name: 'Cherry tomatoes', amount: 100, unit: 'g', category: 'vegetables_fruits' },
+      { id: '10e', name: 'Red pepper flakes', amount: 1, unit: 'tsp', category: 'seasonings' },
+      { id: '10f', name: 'Olive oil', amount: 2, unit: 'tbsp', category: 'others' },
+    ],
+    steps: [
+      'Toast the sourdough bread until golden',
+      'Mash avocado with salt and pepper',
+      'Poach or fry eggs to your liking',
+      'Spread avocado on toast',
+      'Top with egg and halved tomatoes',
+      'Finish with pepper flakes and olive oil drizzle',
+    ],
+    prepTime: 15,
+    storageType: 'fridge',
+    batchServings: 2,
+  },
+  {
+    id: '11',
+    name: 'Smoothie Bowl',
+    mealType: 'breakfast',
+    ingredients: [
+      { id: '11a', name: 'Frozen banana', amount: 2, unit: 'pcs', category: 'vegetables_fruits' },
+      { id: '11b', name: 'Frozen berries', amount: 150, unit: 'g', category: 'vegetables_fruits' },
+      { id: '11c', name: 'Almond milk', amount: 100, unit: 'ml', category: 'others' },
+      { id: '11d', name: 'Granola', amount: 50, unit: 'g', category: 'others' },
+      { id: '11e', name: 'Peanut butter', amount: 2, unit: 'tbsp', category: 'protein' },
+      { id: '11f', name: 'Coconut flakes', amount: 2, unit: 'tbsp', category: 'others' },
+    ],
+    steps: [
+      'Blend frozen banana, berries, and almond milk until thick',
+      'Pour into a bowl',
+      'Top with granola, peanut butter, and coconut flakes',
+      'Add any other toppings you like',
+      'Serve immediately',
+    ],
+    prepTime: 10,
+    storageType: 'fridge',
+    batchServings: 1,
   },
 ];

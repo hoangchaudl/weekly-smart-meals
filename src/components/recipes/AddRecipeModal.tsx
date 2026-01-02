@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useRecipes } from '@/context/RecipeContext';
-import { Ingredient, IngredientCategory, StorageType, Recipe } from '@/types/recipe';
+import { Ingredient, IngredientCategory, StorageType, Recipe, MealType, mealTypeConfig } from '@/types/recipe';
 import { useToast } from '@/hooks/use-toast';
 
 interface AddRecipeModalProps {
@@ -22,6 +22,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const [prepTime, setPrepTime] = useState(30);
   const [batchServings, setBatchServings] = useState(4);
   const [storageType, setStorageType] = useState<StorageType>('fridge');
+  const [mealType, setMealType] = useState<MealType>('dinner');
   const [ingredients, setIngredients] = useState<Omit<Ingredient, 'id'>[]>([
     { name: '', amount: 0, unit: 'g', category: 'vegetables_fruits' }
   ]);
@@ -78,6 +79,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
       prepTime,
       batchServings,
       storageType,
+      mealType,
       ingredients: validIngredients.map((ing, i) => ({ ...ing, id: `new-${i}` })),
       steps: validSteps,
     };
@@ -93,6 +95,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     setPrepTime(30);
     setBatchServings(4);
     setStorageType('fridge');
+    setMealType('dinner');
     setIngredients([{ name: '', amount: 0, unit: 'g', category: 'vegetables_fruits' }]);
     setSteps(['']);
   };
@@ -144,7 +147,23 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
               />
             </div>
 
-            <div className="col-span-2">
+            <div>
+              <Label className="text-sm font-medium">Meal Type</Label>
+              <Select value={mealType} onValueChange={(v) => setMealType(v as MealType)}>
+                <SelectTrigger className="mt-1.5 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(mealTypeConfig) as [MealType, { label: string; emoji: string }][]).map(([type, config]) => (
+                    <SelectItem key={type} value={type}>
+                      {config.emoji} {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label className="text-sm font-medium">Storage Type</Label>
               <Select value={storageType} onValueChange={(v) => setStorageType(v as StorageType)}>
                 <SelectTrigger className="mt-1.5 rounded-xl">

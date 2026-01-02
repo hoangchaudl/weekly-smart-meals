@@ -1,12 +1,14 @@
-import { Recipe } from '@/types/recipe';
-import { Clock, Users, Snowflake, Refrigerator } from 'lucide-react';
+import { Recipe, mealTypeConfig } from '@/types/recipe';
+import { Clock, Users, Snowflake, Refrigerator, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRecipes } from '@/context/RecipeContext';
 
 interface DishCardProps {
   recipe: Recipe;
   onClick?: () => void;
   compact?: boolean;
   className?: string;
+  showShelfIndicator?: boolean;
 }
 
 const categoryEmojis = {
@@ -16,21 +18,37 @@ const categoryEmojis = {
   others: '📦',
 };
 
-export function DishCard({ recipe, onClick, compact = false, className }: DishCardProps) {
+export function DishCard({ recipe, onClick, compact = false, className, showShelfIndicator = false }: DishCardProps) {
+  const { isOnShelf } = useRecipes();
   const StorageIcon = recipe.storageType === 'freezer' ? Snowflake : Refrigerator;
+  const mealConfig = mealTypeConfig[recipe.mealType];
+  
+  // Check if any ingredient is on shelf
+  const hasShelfIngredients = showShelfIndicator && recipe.ingredients.some(ing => isOnShelf(ing.name));
   
   return (
     <div
       onClick={onClick}
       className={cn(
-        'floating-card card-hover cursor-pointer group',
+        'floating-card card-hover cursor-pointer group relative',
         compact ? 'p-4' : 'p-6',
         className
       )}
     >
+      {/* Shelf indicator */}
+      {hasShelfIngredients && (
+        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+          <Home className="w-3 h-3 text-primary-foreground" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm">{mealConfig.emoji}</span>
+            <span className="text-xs text-muted-foreground">{mealConfig.label}</span>
+          </div>
           <h3 className={cn(
             'font-display font-bold text-foreground truncate group-hover:text-primary transition-colors',
             compact ? 'text-base' : 'text-lg'

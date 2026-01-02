@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useRecipes } from '@/context/RecipeContext';
-import { Recipe } from '@/types/recipe';
+import { Recipe, MEAL_TYPES } from '@/types/recipe';
 import { 
   ClipboardList, 
   Snowflake, 
@@ -23,7 +23,19 @@ export default function MealPrep() {
   const { weeklyMenu } = useRecipes();
 
   const prepGuide = useMemo(() => {
-    const dishes = Object.values(weeklyMenu).filter((d): d is Recipe => d !== null);
+    // Collect all recipes from the weekly menu
+    const dishes: Recipe[] = [];
+    const seenIds = new Set<string>();
+    
+    Object.values(weeklyMenu).forEach(dayMeals => {
+      MEAL_TYPES.forEach(mealType => {
+        const recipe = dayMeals[mealType];
+        if (recipe && !seenIds.has(recipe.id)) {
+          dishes.push(recipe);
+          seenIds.add(recipe.id);
+        }
+      });
+    });
     
     // Separate by storage type
     const freezerDishes = dishes.filter(d => d.storageType === 'freezer');
