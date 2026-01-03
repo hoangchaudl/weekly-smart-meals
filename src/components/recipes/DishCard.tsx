@@ -1,17 +1,8 @@
-import { useState } from "react"; // 🔧 CHANGE: local state now lives inside DishCard
+import { useState } from "react";
 import { Recipe, mealTypeConfig } from "@/types/recipe";
-import {
-  Clock,
-  Users,
-  Snowflake,
-  Refrigerator,
-  Home,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Clock, Users, Snowflake, Refrigerator, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRecipes } from "@/context/RecipeContext";
-import { Button } from "@/components/ui/button";
 import { EditRecipeModal } from "./EditRecipeModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 
@@ -21,7 +12,6 @@ interface DishCardProps {
   compact?: boolean;
   className?: string;
   showShelfIndicator?: boolean;
-  showActions?: boolean;
 }
 
 const categoryEmojis = {
@@ -37,12 +27,16 @@ export function DishCard({
   compact = false,
   className,
   showShelfIndicator = false,
-  showActions = false,
 }: DishCardProps) {
   const { isOnShelf, deleteRecipe } = useRecipes();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const [isEditing, setIsEditing] = useState(false); // 🔧 CHANGE: moved edit state into card
-  const [isDeleting, setIsDeleting] = useState(false); // 🔧 CHANGE: moved delete state into card
+  const mealAccent = {
+    breakfast: "meal-accent-breakfast",
+    lunch: "meal-accent-lunch",
+    dinner: "meal-accent-dinner",
+  }[recipe.mealType];
 
   const StorageIcon =
     recipe.storageType === "freezer" ? Snowflake : Refrigerator;
@@ -51,95 +45,59 @@ export function DishCard({
   const ingredientsOnShelf = recipe.ingredients.filter((ing) =>
     isOnShelf(ing.name)
   ).length;
-  const totalIngredients = recipe.ingredients.length;
-  const hasShelfIngredients = showShelfIndicator && ingredientsOnShelf > 0;
 
   return (
     <>
       <div
         onClick={onClick}
         className={cn(
-          "floating-card card-hover cursor-pointer group relative",
+          "cursor-pointer group relative bg-white/80 backdrop-blur-sm",
+          "rounded-[1.75rem] border border-white/60",
+          "hover:shadow-soft transition-all duration-300",
+          mealAccent,
           compact ? "p-4" : "p-6",
           className
         )}
       >
-        {hasShelfIngredients && (
-          <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary flex items-center gap-1 shadow-md">
+        {showShelfIndicator && ingredientsOnShelf > 0 && (
+          <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary/90 flex items-center gap-1 shadow-soft">
             <Home className="w-3 h-3 text-primary-foreground" />
             <span className="text-xs font-medium text-primary-foreground">
-              {ingredientsOnShelf}/{totalIngredients}
+              {ingredientsOnShelf}/{recipe.ingredients.length}
             </span>
           </div>
         )}
 
-        {/* Action buttons */}
-        {/* {showActions && (
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-            <Button
-              variant="secondary"
-              size="icon"
-              className="w-8 h-8 rounded-xl shadow-soft"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditing(true); // 🔧 CHANGE: open edit modal from inside card
-              }}
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="w-8 h-8 rounded-xl shadow-soft hover:bg-destructive hover:text-destructive-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDeleting(true); // 🔧 CHANGE: open delete modal from inside card
-              }}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        )} */}
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm">{mealConfig.emoji}</span>
-              <span className="text-xs text-muted-foreground">
-                {mealConfig.label}
-              </span>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
+              <span>{mealConfig.emoji}</span>
+              {mealConfig.label}
             </div>
+
             <h3
               className={cn(
-                "font-display font-bold text-foreground truncate group-hover:text-primary transition-colors",
+                "font-display font-bold text-foreground",
                 compact ? "text-base" : "text-lg"
               )}
             >
               {recipe.name}
             </h3>
 
-            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
+            <div className="flex items-center gap-3 mt-2 text-muted-foreground text-sm">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">{recipe.prepTime} min</span>
+                {recipe.prepTime} min
               </div>
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                <span className="text-sm">{recipe.batchServings}</span>
+                {recipe.batchServings}
               </div>
-              <StorageIcon
-                className={cn(
-                  "w-4 h-4",
-                  recipe.storageType === "freezer"
-                    ? "text-info"
-                    : "text-primary"
-                )}
-              />
+              <StorageIcon className="w-4 h-4" />
             </div>
           </div>
 
-          <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-secondary/50 flex items-center justify-center text-xl">
+          <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-xl shadow-soft">
             🍽️
           </div>
         </div>
@@ -149,7 +107,7 @@ export function DishCard({
             {recipe.ingredients.slice(0, 4).map((ing) => (
               <span
                 key={ing.id}
-                className="category-badge bg-muted text-muted-foreground text-xs"
+                className="category-badge bg-white/70 text-muted-foreground text-xs"
               >
                 {categoryEmojis[ing.category]} {ing.name}
               </span>
@@ -158,21 +116,16 @@ export function DishCard({
         )}
       </div>
 
-      {/* 🔧 CHANGE: modals now live INSIDE DishCard */}
       <EditRecipeModal
         recipe={recipe}
         open={isEditing}
         onClose={() => setIsEditing(false)}
       />
-
       <DeleteConfirmModal
         recipe={recipe}
         open={isDeleting}
         onClose={() => setIsDeleting(false)}
-        onConfirm={() => {
-          deleteRecipe(recipe.id);
-          setIsDeleting(false);
-        }}
+        onConfirm={() => deleteRecipe(recipe.id)}
       />
     </>
   );
