@@ -11,7 +11,7 @@ import MealPrep from "./pages/MealPrep";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/context/AuthContext";
 import Login from "@/pages/Login";
-
+import Profile from "./pages/Profile";
 const queryClient = new QueryClient();
 
 // 1. I removed <BrowserRouter> from here because we moved it up!
@@ -21,6 +21,7 @@ const AppRoutes = () => (
     <Route path="/weekly-menu" element={<WeeklyMenu />} />
     <Route path="/grocery-list" element={<GroceryList />} />
     <Route path="/meal-prep" element={<MealPrep />} />
+    <Route path="/profile" element={<Profile />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
