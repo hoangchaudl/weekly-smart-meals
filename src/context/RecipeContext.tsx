@@ -11,6 +11,8 @@ interface RecipeContextType {
   deleteRecipe: (id: string) => void;
   generateWeeklyMenu: () => void;
   clearWeeklyMenu: () => void;
+  setMealForDay: (day: DayOfWeek, mealType: MealType, recipe: Recipe | null) => void;
+  swapMeals: (fromDay: DayOfWeek, fromMeal: MealType, toDay: DayOfWeek, toMeal: MealType) => void;
   addShelfItem: (item: Omit<ShelfItem, 'id'>) => void;
   removeShelfItem: (id: string) => void;
   isOnShelf: (ingredientName: string) => boolean;
@@ -90,6 +92,35 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     setWeeklyMenu(menu);
   };
 
+  const setMealForDay = (day: DayOfWeek, mealType: MealType, recipe: Recipe | null) => {
+    setWeeklyMenu(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [mealType]: recipe,
+      },
+    }));
+  };
+
+  const swapMeals = (fromDay: DayOfWeek, fromMeal: MealType, toDay: DayOfWeek, toMeal: MealType) => {
+    setWeeklyMenu(prev => {
+      const fromRecipe = prev[fromDay][fromMeal];
+      const toRecipe = prev[toDay][toMeal];
+      
+      return {
+        ...prev,
+        [fromDay]: {
+          ...prev[fromDay],
+          [fromMeal]: toRecipe,
+        },
+        [toDay]: {
+          ...prev[toDay],
+          [toMeal]: fromRecipe,
+        },
+      };
+    });
+  };
+
   const addShelfItem = (item: Omit<ShelfItem, 'id'>) => {
     const newItem: ShelfItem = {
       ...item,
@@ -118,6 +149,8 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
       deleteRecipe,
       generateWeeklyMenu,
       clearWeeklyMenu,
+      setMealForDay,
+      swapMeals,
       addShelfItem,
       removeShelfItem,
       isOnShelf,
