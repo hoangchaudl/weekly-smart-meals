@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 
@@ -8,7 +14,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({ session: null });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
@@ -28,4 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ✅ FIX: This magic comment silences the warning for the line below it
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -1,160 +1,92 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { imageBase64 } = await req.json();
-    
-    if (!imageBase64) {
-      return new Response(
-        JSON.stringify({ error: 'No image provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const body = await req.json().catch(() => null);
+    if (!body?.imageBase64) {
+      return new Response(JSON.stringify({ error: "Missing imageBase64" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
-      return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not set");
     }
 
-    console.log('Processing recipe image for OCR extraction...');
+    const cleanBase64 = body.imageBase64.includes("base64,")
+      ? body.imageBase64.split("base64,")[1]
+      : body.imageBase64;
 
-    const systemPrompt = `You are a recipe extraction assistant. Analyze the provided image of a recipe (from a cookbook, screenshot, or handwritten note) and extract the following information in JSON format:
-
+    const prompt = `
+Return ONLY valid JSON:
 {
-  "name": "Dish name",
+  "name": "",
   "prepTime": 30,
   "batchServings": 4,
   "storageType": "fridge",
   "mealType": "dinner",
-  "ingredients": [
-    {
-      "name": "ingredient name",
-      "amount": 100,
-      "unit": "g",
-      "category": "vegetables_fruits"
-    }
-  ],
-  "steps": ["Step 1...", "Step 2..."],
-  "confidence": {
-    "name": "high",
-    "ingredients": "medium",
-    "steps": "high"
-  }
+  "ingredients": [{"name":"","amount":0,"unit":"g","category":"others"}],
+  "steps": ["Step 1"],
+  "confidence":{"name":"high","ingredients":"medium","steps":"high"}
 }
+storageType: fridge|freezer
+category: vegetables_fruits|protein|seasonings|others
+    `;
 
-Rules:
-- For category, use one of: "vegetables_fruits", "protein", "seasonings", "others"
-- For storageType, use "fridge" or "freezer"
-- For mealType, use "breakfast", "lunch", or "dinner" based on the type of dish
-- prepTime should be in minutes (estimate if not specified)
-- If amounts are not clear, make reasonable estimates
-- confidence levels should be "high", "medium", or "low"
-- Always return valid JSON only, no markdown or extra text`;
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Extract the recipe from this image and return the structured JSON data.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageBase64
-                }
-              }
-            ]
-          }
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: cleanBase64,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: 'Failed to process image' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      console.error('No content in AI response');
-      return new Response(
-        JSON.stringify({ error: 'No recipe data extracted' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('AI response received, parsing JSON...');
-
-    // Try to parse the JSON from the response
-    let recipeData;
-    try {
-      // Remove potential markdown code blocks
-      const cleanedContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      recipeData = JSON.parse(cleanedContent);
-    } catch (parseError) {
-      console.error('Failed to parse recipe JSON:', parseError, 'Content:', content);
-      return new Response(
-        JSON.stringify({ error: 'Failed to parse recipe data', rawContent: content }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Recipe extracted successfully:', recipeData.name);
-
-    return new Response(
-      JSON.stringify({ recipe: recipeData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
-    console.error('Error in extract-recipe function:', error);
+
+    const result = await response.json();
+    const raw = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    const jsonText = raw.replace(/```json|```/g, "").trim();
+    const recipe = JSON.parse(jsonText);
+
+    return new Response(JSON.stringify({ recipe }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });

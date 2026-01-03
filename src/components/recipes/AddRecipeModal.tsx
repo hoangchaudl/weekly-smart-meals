@@ -39,6 +39,12 @@ interface ExtractedConfidence {
   ingredients?: "high" | "medium" | "low";
   steps?: "high" | "medium" | "low";
 }
+type ExtractedIngredient = {
+  name?: string;
+  amount?: number;
+  unit?: string;
+  category?: IngredientCategory;
+};
 
 export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const { addRecipe } = useRecipes();
@@ -74,7 +80,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const handleIngredientChange = (
     index: number,
     field: keyof Omit<Ingredient, "id">,
-    value: any
+    value: string | number | IngredientCategory
   ) => {
     const newIngredients = [...ingredients];
     newIngredients[index] = { ...newIngredients[index], [field]: value };
@@ -138,7 +144,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
 
         if (recipe.ingredients?.length > 0) {
           setIngredients(
-            recipe.ingredients.map((ing: any) => ({
+            recipe.ingredients.map((ing: ExtractedIngredient) => ({
               name: ing.name || "",
               amount: ing.amount || 0,
               unit: ing.unit || "g",

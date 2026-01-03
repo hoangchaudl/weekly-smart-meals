@@ -47,10 +47,16 @@ export function EditRecipeModal({
   const [storageType, setStorageType] = useState<StorageType>("fridge");
   const [mealType, setMealType] = useState<MealType>("dinner");
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [steps, setSteps] = useState<string[]>([""]);
+
+  // ✅ FIX: State is now an array of objects { id, text }
+  const [steps, setSteps] = useState<{ id: string; text: string }[]>([
+    { id: "init-1", text: "" },
+  ]);
+
   const [instructionVideoUrl, setInstructionVideoUrl] = useState(
-    recipe.instructionVideoUrl || ""
+    recipe?.instructionVideoUrl || ""
   );
+
   // Populate form when recipe changes
   useEffect(() => {
     if (recipe) {
@@ -60,7 +66,15 @@ export function EditRecipeModal({
       setStorageType(recipe.storageType);
       setMealType(recipe.mealType);
       setIngredients([...recipe.ingredients]);
-      setSteps([...recipe.steps]);
+
+      // ✅ FIX: Convert existing string steps to objects with IDs
+      setSteps(
+        recipe.steps.map((step) => ({
+          id: `existing-${Math.random().toString(36).substr(2, 9)}`,
+          text: step,
+        }))
+      );
+
       setInstructionVideoUrl(recipe.instructionVideoUrl || "");
     }
   }, [recipe]);
@@ -85,25 +99,27 @@ export function EditRecipeModal({
   const handleIngredientChange = (
     index: number,
     field: keyof Ingredient,
-    value: any
+    value: string | number | IngredientCategory
   ) => {
     const newIngredients = [...ingredients];
     newIngredients[index] = { ...newIngredients[index], [field]: value };
     setIngredients(newIngredients);
   };
 
+  // ✅ FIX: Add new step as an object
   const handleAddStep = () => {
-    setSteps([...steps, ""]);
+    setSteps([...steps, { id: `new-${Date.now()}`, text: "" }]);
+  };
+
+  // ✅ FIX: Update the 'text' property of the step object
+  const handleStepChange = (index: number, value: string) => {
+    const newSteps = [...steps];
+    newSteps[index].text = value;
+    setSteps(newSteps);
   };
 
   const handleRemoveStep = (index: number) => {
     setSteps(steps.filter((_, i) => i !== index));
-  };
-
-  const handleStepChange = (index: number, value: string) => {
-    const newSteps = [...steps];
-    newSteps[index] = value;
-    setSteps(newSteps);
   };
 
   const handleSubmit = () => {
@@ -125,7 +141,9 @@ export function EditRecipeModal({
       return;
     }
 
-    const validSteps = steps.filter((s) => s.trim());
+    // ✅ FIX: Convert step objects back to strings for saving
+    const validSteps = steps.map((s) => s.text).filter((s) => s.trim());
+
     if (validSteps.length === 0) {
       toast({
         title: "Please add at least one cooking step",
@@ -143,7 +161,7 @@ export function EditRecipeModal({
       mealType,
       ingredients: validIngredients,
       steps: validSteps,
-      instructionVideoUrl: instructionVideoUrl.trim() || undefined, // ✅ ADD
+      instructionVideoUrl: instructionVideoUrl.trim() || undefined,
     };
 
     updateRecipe(updatedRecipe);
@@ -335,13 +353,13 @@ export function EditRecipeModal({
             </Label>
             <div className="space-y-2">
               {steps.map((step, index) => (
-                <div key={index} className="flex gap-2 items-center">
+                <div key={step.id} className="flex gap-2 items-center">
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
                     {index + 1}
                   </div>
                   <Input
                     placeholder={`Step ${index + 1}...`}
-                    value={step}
+                    value={step.text}
                     onChange={(e) => handleStepChange(index, e.target.value)}
                     className="flex-1 rounded-xl"
                   />
@@ -366,6 +384,7 @@ export function EditRecipeModal({
               <Plus className="w-4 h-4 mr-1" /> Add Step
             </Button>
           </div>
+
           {/* 🎬 Instruction Video */}
           <div>
             <Label className="text-sm font-medium">

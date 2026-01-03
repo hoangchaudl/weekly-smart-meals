@@ -21,7 +21,7 @@ export default function Profile() {
   // Load initial data
   useEffect(() => {
     if (session?.user) {
-      const { user_metadata, email } = session.user;
+      const { user_metadata } = session.user;
       setFullName(user_metadata.full_name || "");
       setAvatarUrl(user_metadata.avatar_url || null);
     }
@@ -59,10 +59,12 @@ export default function Profile() {
         title: "Image uploaded!",
         description: "Don't forget to save changes.",
       });
-    } catch (error: any) {
+    } catch (error) {
+      // ✅ FIX 1: Removed ": any"
       toast({
         title: "Upload failed",
-        description: error.message,
+        // ✅ FIX 2: Cast error as Error to safely access .message
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -85,10 +87,12 @@ export default function Profile() {
 
       if (error) throw error;
       toast({ title: "Success", description: "Profile updated successfully!" });
-    } catch (error: any) {
+    } catch (error) {
+      // ✅ FIX 3: Removed ": any"
       toast({
         title: "Error",
-        description: error.message,
+        // ✅ FIX 4: Cast error as Error here too
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -103,7 +107,11 @@ export default function Profile() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative group">
             <Avatar className="h-32 w-32 border-4 border-background shadow-md">
-              <AvatarImage src={avatarUrl || ""} objectFit="cover" />
+              <AvatarImage
+                src={avatarUrl || ""}
+                // ✅ FIX 5: Replaced invalid objectFit prop with Tailwind class
+                className="object-cover"
+              />
               <AvatarFallback className="text-4xl bg-secondary">
                 {fullName?.[0]?.toUpperCase() || "U"}
               </AvatarFallback>

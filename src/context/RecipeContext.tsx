@@ -169,6 +169,8 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ✅ FIX: Add this line below to ignore the warning for this specific export
+// eslint-disable-next-line react-refresh/only-export-components
 export function useRecipes() {
   const ctx = useContext(RecipeContext);
   if (!ctx) throw new Error("useRecipes must be used within RecipeProvider");
