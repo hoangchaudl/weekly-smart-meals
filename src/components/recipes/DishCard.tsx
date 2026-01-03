@@ -1,7 +1,8 @@
 import { Recipe, mealTypeConfig } from '@/types/recipe';
-import { Clock, Users, Snowflake, Refrigerator, Home } from 'lucide-react';
+import { Clock, Users, Snowflake, Refrigerator, Home, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRecipes } from '@/context/RecipeContext';
+import { Button } from '@/components/ui/button';
 
 interface DishCardProps {
   recipe: Recipe;
@@ -9,6 +10,9 @@ interface DishCardProps {
   compact?: boolean;
   className?: string;
   showShelfIndicator?: boolean;
+  showActions?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const categoryEmojis = {
@@ -18,13 +22,24 @@ const categoryEmojis = {
   others: '📦',
 };
 
-export function DishCard({ recipe, onClick, compact = false, className, showShelfIndicator = false }: DishCardProps) {
-  const { isOnShelf } = useRecipes();
+export function DishCard({ 
+  recipe, 
+  onClick, 
+  compact = false, 
+  className, 
+  showShelfIndicator = false,
+  showActions = false,
+  onEdit,
+  onDelete 
+}: DishCardProps) {
+  const { isOnShelf, shelfItems } = useRecipes();
   const StorageIcon = recipe.storageType === 'freezer' ? Snowflake : Refrigerator;
   const mealConfig = mealTypeConfig[recipe.mealType];
   
-  // Check if any ingredient is on shelf
-  const hasShelfIngredients = showShelfIndicator && recipe.ingredients.some(ing => isOnShelf(ing.name));
+  // Count ingredients on shelf
+  const ingredientsOnShelf = recipe.ingredients.filter(ing => isOnShelf(ing.name)).length;
+  const totalIngredients = recipe.ingredients.length;
+  const hasShelfIngredients = showShelfIndicator && ingredientsOnShelf > 0;
   
   return (
     <div
@@ -35,10 +50,39 @@ export function DishCard({ recipe, onClick, compact = false, className, showShel
         className
       )}
     >
-      {/* Shelf indicator */}
+      {/* Shelf indicator with count */}
       {hasShelfIngredients && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+        <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary flex items-center gap-1 shadow-md">
           <Home className="w-3 h-3 text-primary-foreground" />
+          <span className="text-xs font-medium text-primary-foreground">{ingredientsOnShelf}/{totalIngredients}</span>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {showActions && (
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="w-8 h-8 rounded-xl shadow-soft"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.();
+            }}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="w-8 h-8 rounded-xl shadow-soft hover:bg-destructive hover:text-destructive-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.();
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       )}
 

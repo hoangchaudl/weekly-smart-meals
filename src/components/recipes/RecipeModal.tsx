@@ -1,7 +1,8 @@
 import { Recipe } from '@/types/recipe';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Clock, Users, Snowflake, Refrigerator, ChevronRight } from 'lucide-react';
+import { Clock, Users, Snowflake, Refrigerator, ChevronRight, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRecipes } from '@/context/RecipeContext';
 
 interface RecipeModalProps {
   recipe: Recipe | null;
@@ -24,9 +25,12 @@ const categoryEmojis = {
 };
 
 export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
+  const { isOnShelf } = useRecipes();
+  
   if (!recipe) return null;
 
   const StorageIcon = recipe.storageType === 'freezer' ? Snowflake : Refrigerator;
+  const ingredientsOnShelf = recipe.ingredients.filter(ing => isOnShelf(ing.name)).length;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -40,7 +44,7 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
           </DialogHeader>
           
           {/* Stats bar */}
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-2 bg-card/80 backdrop-blur px-3 py-1.5 rounded-full">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">{recipe.prepTime} min</span>
@@ -56,6 +60,14 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
               )} />
               <span className="text-sm font-medium capitalize">{recipe.storageType}</span>
             </div>
+            {ingredientsOnShelf > 0 && (
+              <div className="flex items-center gap-2 bg-primary/80 backdrop-blur px-3 py-1.5 rounded-full">
+                <Home className="w-4 h-4 text-primary-foreground" />
+                <span className="text-sm font-medium text-primary-foreground">
+                  {ingredientsOnShelf}/{recipe.ingredients.length} on shelf
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -66,21 +78,27 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
               <span className="text-xl">🥘</span> Ingredients
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              {recipe.ingredients.map((ing) => (
-                <div
-                  key={ing.id}
-                  className={cn(
-                    'flex items-center gap-2 p-3 rounded-2xl',
-                    categoryColors[ing.category]
-                  )}
-                >
-                  <span>{categoryEmojis[ing.category]}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{ing.name}</p>
-                    <p className="text-xs opacity-75">{ing.amount} {ing.unit}</p>
+              {recipe.ingredients.map((ing) => {
+                const onShelf = isOnShelf(ing.name);
+                return (
+                  <div
+                    key={ing.id}
+                    className={cn(
+                      'flex items-center gap-2 p-3 rounded-2xl relative',
+                      onShelf ? 'bg-primary/30 ring-2 ring-primary/50' : categoryColors[ing.category]
+                    )}
+                  >
+                    <span>{categoryEmojis[ing.category]}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{ing.name}</p>
+                      <p className="text-xs opacity-75">{ing.amount} {ing.unit}</p>
+                    </div>
+                    {onShelf && (
+                      <Home className="w-4 h-4 text-primary flex-shrink-0" />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 

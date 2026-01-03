@@ -3,15 +3,21 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { DishCard } from '@/components/recipes/DishCard';
 import { RecipeModal } from '@/components/recipes/RecipeModal';
 import { AddRecipeModal } from '@/components/recipes/AddRecipeModal';
+import { EditRecipeModal } from '@/components/recipes/EditRecipeModal';
+import { DeleteConfirmModal } from '@/components/recipes/DeleteConfirmModal';
 import { useRecipes } from '@/context/RecipeContext';
 import { Recipe } from '@/types/recipe';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, ChefHat } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MyDishes() {
-  const { recipes } = useRecipes();
+  const { recipes, deleteRecipe } = useRecipes();
+  const { toast } = useToast();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [deletingRecipe, setDeletingRecipe] = useState<Recipe | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -19,6 +25,14 @@ export default function MyDishes() {
     recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handleDelete = () => {
+    if (deletingRecipe) {
+      deleteRecipe(deletingRecipe.id);
+      toast({ title: '🗑️ Recipe deleted' });
+      setDeletingRecipe(null);
+    }
+  };
 
   return (
     <MainLayout
@@ -57,6 +71,10 @@ export default function MyDishes() {
               <DishCard
                 recipe={recipe}
                 onClick={() => setSelectedRecipe(recipe)}
+                showShelfIndicator
+                showActions
+                onEdit={() => setEditingRecipe(recipe)}
+                onDelete={() => setDeletingRecipe(recipe)}
               />
             </div>
           ))}
@@ -89,6 +107,21 @@ export default function MyDishes() {
         recipe={selectedRecipe}
         open={!!selectedRecipe}
         onClose={() => setSelectedRecipe(null)}
+      />
+
+      {/* Edit recipe modal */}
+      <EditRecipeModal
+        recipe={editingRecipe}
+        open={!!editingRecipe}
+        onClose={() => setEditingRecipe(null)}
+      />
+
+      {/* Delete confirmation */}
+      <DeleteConfirmModal
+        recipe={deletingRecipe}
+        open={!!deletingRecipe}
+        onClose={() => setDeletingRecipe(null)}
+        onConfirm={handleDelete}
       />
 
       {/* Add recipe modal */}
