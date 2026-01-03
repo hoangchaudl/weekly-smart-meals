@@ -171,7 +171,8 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     }
   };
 
-  const handleSubmit = () => {
+  // --- UPDATED FUNCTION START ---
+  const handleSubmit = async () => {
     if (!name.trim()) {
       toast({ title: "Please enter a dish name", variant: "destructive" });
       return;
@@ -211,11 +212,26 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
       instructionVideoUrl: instructionVideoUrl.trim() || undefined,
     };
 
-    addRecipe(recipe);
-    toast({ title: "🎉 Recipe added successfully!" });
-    handleReset();
-    onClose();
+    try {
+      // Wait for the database operation to finish
+      await addRecipe(recipe);
+
+      // If successful, show success toast
+      toast({ title: "🎉 Recipe added successfully!" });
+      handleReset();
+      onClose();
+    } catch (error) {
+      // If error, show the real error message
+      console.error("Add Recipe Error:", error);
+      toast({
+        title: "Failed to save recipe",
+        description:
+          (error as Error).message || "Please check your permissions.",
+        variant: "destructive",
+      });
+    }
   };
+  // --- UPDATED FUNCTION END ---
 
   const handleReset = () => {
     setName("");
