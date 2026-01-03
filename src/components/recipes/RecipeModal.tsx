@@ -20,12 +20,24 @@ import { Button } from "@/components/ui/button";
 import { EditRecipeModal } from "./EditRecipeModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { useState } from "react";
+import { Play } from "lucide-react";
 
 interface RecipeModalProps {
   recipe: Recipe | null;
   open: boolean;
   onClose: () => void;
 }
+const getEmbedUrl = (url: string) => {
+  if (url.includes("youtube.com/watch")) {
+    const id = new URL(url).searchParams.get("v");
+    return id ? `https://www.youtube.com/embed/${id}` : url;
+  }
+  if (url.includes("youtu.be/")) {
+    const id = url.split("youtu.be/")[1];
+    return `https://www.youtube.com/embed/${id}`;
+  }
+  return url; // mp4 / webm direct links
+};
 
 const categoryColors = {
   vegetables_fruits: "bg-primary/20 text-primary-foreground",
@@ -176,6 +188,31 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
                 </div>
               ))}
             </div>
+            {recipe.instructionVideoUrl && (
+              <div className="mt-6">
+                <h3 className="font-display font-bold mb-2 flex items-center gap-2">
+                  <Play className="w-5 h-5 text-primary" />
+                  Watch while cooking
+                </h3>
+
+                <div className="w-full aspect-video rounded-2xl overflow-hidden border bg-black">
+                  {recipe.instructionVideoUrl.includes("youtube") ||
+                  recipe.instructionVideoUrl.includes("youtu.be") ? (
+                    <iframe
+                      src={getEmbedUrl(recipe.instructionVideoUrl)}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={recipe.instructionVideoUrl}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Storage tip */}

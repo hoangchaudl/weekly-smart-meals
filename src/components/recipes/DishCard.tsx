@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useRecipes } from "@/context/RecipeContext";
 import { EditRecipeModal } from "./EditRecipeModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+// import { Play } from "lucide-react";
+// import { VideoModal } from "./VideoModal";
 
 interface DishCardProps {
   recipe: Recipe;
@@ -31,6 +33,7 @@ export function DishCard({
   const { isOnShelf, deleteRecipe } = useRecipes();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // const [showVideo, setShowVideo] = useState(false);
 
   const mealAccent = {
     breakfast: "meal-accent-breakfast",
@@ -49,7 +52,7 @@ export function DishCard({
   return (
     <>
       <div
-        onClick={onClick}
+        onClick={() => onClick?.()}
         className={cn(
           "cursor-pointer group relative bg-white/80 backdrop-blur-sm",
           "rounded-[1.75rem] border border-white/60",
@@ -114,6 +117,22 @@ export function DishCard({
             ))}
           </div>
         )}
+        {/* 
+        {recipe.instructionVideoUrl?.trim() && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowVideo(true);
+            }}
+            className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full 
+               bg-primary/10 text-primary text-sm font-medium 
+               hover:bg-primary/20 transition"
+          >
+            <Play className="w-4 h-4" />
+            Watch Video
+          </button>
+        )} */}
       </div>
 
       <EditRecipeModal
@@ -127,6 +146,11 @@ export function DishCard({
         onClose={() => setIsDeleting(false)}
         onConfirm={() => deleteRecipe(recipe.id)}
       />
+      {/* <VideoModal
+        open={showVideo}
+        url={recipe.instructionVideoUrl || ""}
+        onClose={() => setShowVideo(false)}
+      /> */}
     </>
   );
 }

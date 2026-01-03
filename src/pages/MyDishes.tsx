@@ -3,33 +3,38 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { DishCard } from "@/components/recipes/DishCard";
 import { RecipeModal } from "@/components/recipes/RecipeModal";
 import { AddRecipeModal } from "@/components/recipes/AddRecipeModal";
-// 🔧 CHANGE: removed EditRecipeModal & DeleteConfirmModal imports
 import { useRecipes } from "@/context/RecipeContext";
-import { Recipe } from "@/types/recipe";
+import { Recipe, MealType } from "@/types/recipe";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, ChefHat } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function MyDishes() {
-  const { recipes } = useRecipes(); // 🔧 CHANGE: deleteRecipe no longer needed here
+  const { recipes } = useRecipes();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-
-  // 🔧 CHANGE: removed editingRecipe & deletingRecipe states
+  const [activeFilters, setActiveFilters] = useState<MealType[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredRecipes = recipes.filter(
-    (recipe) =>
-      recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.ingredients.some((ing) =>
-        ing.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-  );
+  const filteredRecipes = recipes
+    .filter(
+      (recipe) =>
+        recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        recipe.ingredients.some((ing) =>
+          ing.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    )
+    .filter((recipe) =>
+      activeFilters.length === 0
+        ? true
+        : activeFilters.includes(recipe.mealType)
+    );
 
   return (
     <MainLayout title="My Dishes" subtitle="Your personal recipe collection">
       {/* Search and Add */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
@@ -48,6 +53,39 @@ export default function MyDishes() {
         </Button>
       </div>
 
+      {/* 🍽 Meal Type Filters */}
+      <div className="flex flex-wrap gap-2 mb-8">
+        {[
+          { key: "breakfast", label: "Breakfast", emoji: "☕" },
+          { key: "lunch", label: "Lunch", emoji: "🌞" },
+          { key: "dinner", label: "Dinner", emoji: "🌙" },
+          { key: "snacks", label: "Snacks", emoji: "🍪" },
+        ].map((item) => {
+          const active = activeFilters.includes(item.key as MealType);
+
+          return (
+            <button
+              key={item.key}
+              onClick={() =>
+                setActiveFilters((prev) =>
+                  active
+                    ? prev.filter((f) => f !== item.key)
+                    : [...prev, item.key as MealType]
+                )
+              }
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                active
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "bg-muted hover:bg-muted/70 text-muted-foreground"
+              )}
+            >
+              {item.emoji} {item.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Recipe Grid */}
       {filteredRecipes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -61,8 +99,6 @@ export default function MyDishes() {
                 recipe={recipe}
                 onClick={() => setSelectedRecipe(recipe)}
                 showShelfIndicator
-                showActions
-                // 🔧 CHANGE: no onEdit / onDelete props anymore
               />
             </div>
           ))}
@@ -73,35 +109,19 @@ export default function MyDishes() {
             <ChefHat className="w-10 h-10 text-muted-foreground" />
           </div>
           <h3 className="text-xl font-display font-bold text-foreground mb-2">
-            {searchQuery ? "No dishes found" : "No dishes yet"}
+            No dishes found
           </h3>
           <p className="text-muted-foreground mb-6">
-            {searchQuery
-              ? "Try a different search term"
-              : "Add your first recipe to get started!"}
+            Try adjusting your filters or search term.
           </p>
-          {!searchQuery && (
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              className="btn-primary"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Your First Dish
-            </Button>
-          )}
         </div>
       )}
 
-      {/* Recipe detail modal */}
       <RecipeModal
         recipe={selectedRecipe}
         open={!!selectedRecipe}
         onClose={() => setSelectedRecipe(null)}
       />
-
-      {/* 🔧 CHANGE: Edit & Delete modals removed — now live inside DishCard */}
-
-      {/* Add recipe modal */}
       <AddRecipeModal
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

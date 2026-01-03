@@ -1,8 +1,12 @@
-export type IngredientCategory = 'vegetables_fruits' | 'protein' | 'seasonings' | 'others';
+export type IngredientCategory =
+  | "vegetables_fruits"
+  | "protein"
+  | "seasonings"
+  | "others";
 
-export type StorageType = 'fridge' | 'freezer';
+export type StorageType = "fridge" | "freezer";
 
-export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type MealType = "breakfast" | "lunch" | "dinner" | "snacks";
 
 export interface Ingredient {
   id: string;
@@ -22,6 +26,7 @@ export interface Recipe {
   batchServings: number;
   mealType: MealType;
   imageUrl?: string;
+  instructionVideoUrl?: string; // 🎬 NEW
 }
 
 export interface DayMeals {
@@ -48,14 +53,26 @@ export interface GroceryItem {
   onShelf?: boolean;
 }
 
-export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+export const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
 
-export type DayOfWeek = typeof DAYS_OF_WEEK[number];
+export type DayOfWeek = (typeof DAYS_OF_WEEK)[number];
 
-export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
+export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner"];
 
-export const mealTypeConfig: Record<MealType, { label: string; emoji: string }> = {
-  breakfast: { label: 'Breakfast', emoji: '🌅' },
-  lunch: { label: 'Lunch', emoji: '☀️' },
-  dinner: { label: 'Dinner', emoji: '🌙' },
+export const mealTypeConfig: Record<
+  MealType,
+  { label: string; emoji: string }
+> = {
+  breakfast: { label: "Breakfast", emoji: "🌅" },
+  lunch: { label: "Lunch", emoji: "☀️" },
+  dinner: { label: "Dinner", emoji: "🌙" },
+  snacks: { label: "Snacks", emoji: "🍿" },
 };
