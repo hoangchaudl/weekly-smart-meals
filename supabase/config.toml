@@ -1,0 +1,4 @@
+project_id = "kxlajejaxsmkgxlkoqsw"
+
+[functions.extract-recipe]
+verify_jwt = false

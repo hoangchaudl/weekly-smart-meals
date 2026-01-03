@@ -1,22 +1,31 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { useRecipes } from '@/context/RecipeContext';
 import { Ingredient, IngredientCategory, StorageType, Recipe, MealType, mealTypeConfig } from '@/types/recipe';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface AddRecipeModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+interface ExtractedConfidence {
+  name?: 'high' | 'medium' | 'low';
+  ingredients?: 'high' | 'medium' | 'low';
+  steps?: 'high' | 'medium' | 'low';
+}
+
 export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const { addRecipe } = useRecipes();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState('');
   const [prepTime, setPrepTime] = useState(30);
@@ -27,6 +36,8 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     { name: '', amount: 0, unit: 'g', category: 'vegetables_fruits' }
   ]);
   const [steps, setSteps] = useState<string[]>(['']);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [confidence, setConfidence] = useState<ExtractedConfidence | null>(null);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { name: '', amount: 0, unit: 'g', category: 'vegetables_fruits' }]);
@@ -54,6 +65,75 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     const newSteps = [...steps];
     newSteps[index] = value;
     setSteps(newSteps);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      await extractRecipeFromImage(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const extractRecipeFromImage = async (imageBase64: string) => {
+    setIsExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-recipe', {
+        body: { imageBase64 }
+      });
+
+      if (error) {
+        console.error('Error extracting recipe:', error);
+        toast({ 
+          title: 'Failed to extract recipe', 
+          description: error.message || 'Please try again or enter manually',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      if (data?.recipe) {
+        const recipe = data.recipe;
+        setName(recipe.name || '');
+        setPrepTime(recipe.prepTime || 30);
+        setBatchServings(recipe.batchServings || 4);
+        setStorageType(recipe.storageType || 'fridge');
+        setMealType(recipe.mealType || 'dinner');
+        
+        if (recipe.ingredients?.length > 0) {
+          setIngredients(recipe.ingredients.map((ing: any) => ({
+            name: ing.name || '',
+            amount: ing.amount || 0,
+            unit: ing.unit || 'g',
+            category: ing.category || 'others'
+          })));
+        }
+        
+        if (recipe.steps?.length > 0) {
+          setSteps(recipe.steps);
+        }
+        
+        if (recipe.confidence) {
+          setConfidence(recipe.confidence);
+        }
+        
+        toast({ title: '✨ Recipe extracted! Please review and edit as needed.' });
+      }
+    } catch (err) {
+      console.error('Extraction error:', err);
+      toast({ 
+        title: 'Error processing image', 
+        description: 'Please try a clearer image or enter manually',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -98,6 +178,16 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     setMealType('dinner');
     setIngredients([{ name: '', amount: 0, unit: 'g', category: 'vegetables_fruits' }]);
     setSteps(['']);
+    setConfidence(null);
+  };
+
+  const getConfidenceColor = (level?: 'high' | 'medium' | 'low') => {
+    switch (level) {
+      case 'high': return 'text-primary';
+      case 'medium': return 'text-secondary-foreground';
+      case 'low': return 'text-destructive';
+      default: return '';
+    }
   };
 
   return (
@@ -110,6 +200,66 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
+          {/* Smart Import Section */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-secondary/20 border border-primary/20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Camera className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-sm">📸 Smart Import</h4>
+                <p className="text-xs text-muted-foreground">
+                  Upload a photo of a recipe to auto-fill all fields
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtracting}
+                className="rounded-full gap-2"
+              >
+                {isExtracting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Extracting...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4" />
+                    Upload Image
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Confidence indicator */}
+          {confidence && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
+              <AlertCircle className="w-4 h-4" />
+              <span>AI Confidence:</span>
+              <span className={cn('font-medium', getConfidenceColor(confidence.name))}>
+                Name: {confidence.name}
+              </span>
+              <span>•</span>
+              <span className={cn('font-medium', getConfidenceColor(confidence.ingredients))}>
+                Ingredients: {confidence.ingredients}
+              </span>
+              <span>•</span>
+              <span className={cn('font-medium', getConfidenceColor(confidence.steps))}>
+                Steps: {confidence.steps}
+              </span>
+            </div>
+          )}
+
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -119,7 +269,10 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Lemon Herb Chicken"
-                className="mt-1.5 rounded-xl border-border"
+                className={cn(
+                  "mt-1.5 rounded-xl border-border",
+                  confidence?.name === 'low' && 'ring-2 ring-destructive/50'
+                )}
               />
             </div>
             
@@ -179,7 +332,12 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
 
           {/* Ingredients */}
           <div>
-            <Label className="text-sm font-medium mb-3 block">Ingredients</Label>
+            <Label className={cn(
+              "text-sm font-medium mb-3 block",
+              confidence?.ingredients === 'low' && 'text-destructive'
+            )}>
+              Ingredients {confidence?.ingredients === 'low' && '⚠️'}
+            </Label>
             <div className="space-y-2">
               {ingredients.map((ing, index) => (
                 <div key={index} className="flex gap-2 items-center">
@@ -240,7 +398,12 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
 
           {/* Steps */}
           <div>
-            <Label className="text-sm font-medium mb-3 block">Cooking Steps</Label>
+            <Label className={cn(
+              "text-sm font-medium mb-3 block",
+              confidence?.steps === 'low' && 'text-destructive'
+            )}>
+              Cooking Steps {confidence?.steps === 'low' && '⚠️'}
+            </Label>
             <div className="space-y-2">
               {steps.map((step, index) => (
                 <div key={index} className="flex gap-2 items-center">
