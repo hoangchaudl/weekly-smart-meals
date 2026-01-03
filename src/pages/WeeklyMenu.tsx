@@ -1,12 +1,25 @@
-import { useState } from 'react';
-import { MainLayout } from '@/components/layout/MainLayout';
-import { DishCard } from '@/components/recipes/DishCard';
-import { RecipeModal } from '@/components/recipes/RecipeModal';
-import { useRecipes } from '@/context/RecipeContext';
-import { Recipe, DAYS_OF_WEEK, MEAL_TYPES, mealTypeConfig, MealType, DayOfWeek } from '@/types/recipe';
-import { Button } from '@/components/ui/button';
-import { Shuffle, Trash2, CalendarDays, Sparkles, GripVertical } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from "react"; // 🗓 CHANGE: merged imports
+import { MainLayout } from "@/components/layout/MainLayout";
+import { DishCard } from "@/components/recipes/DishCard";
+import { RecipeModal } from "@/components/recipes/RecipeModal";
+import { useRecipes } from "@/context/RecipeContext";
+import {
+  Recipe,
+  DAYS_OF_WEEK,
+  MEAL_TYPES,
+  mealTypeConfig,
+  MealType,
+  DayOfWeek,
+} from "@/types/recipe";
+import { Button } from "@/components/ui/button";
+import {
+  Shuffle,
+  Trash2,
+  CalendarDays,
+  Sparkles,
+  GripVertical,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   DndContext,
   closestCenter,
@@ -17,20 +30,42 @@ import {
   useSensors,
   PointerSensor,
   TouchSensor,
-} from '@dnd-kit/core';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+} from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+
+// 🗓 CHANGE: helpers for current week
+function getWeekRange(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  const start = new Date(d);
+  start.setDate(d.getDate() - day + 1);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+function formatWeekRange(start: Date, end: Date) {
+  return `${start.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })} – ${end.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+}
 
 const dayColors = [
-  'bg-primary/10 border-primary/30',
-  'bg-secondary/20 border-secondary/40',
-  'bg-accent/20 border-accent/40',
-  'bg-info/20 border-info/40',
-  'bg-primary/10 border-primary/30',
-  'bg-secondary/20 border-secondary/40',
-  'bg-accent/20 border-accent/40',
+  "bg-primary/10 border-primary/30",
+  "bg-secondary/20 border-secondary/40",
+  "bg-accent/20 border-accent/40",
+  "bg-info/20 border-info/40",
+  "bg-primary/10 border-primary/30",
+  "bg-secondary/20 border-secondary/40",
+  "bg-accent/20 border-accent/40",
 ];
 
-const dayEmojis = ['🌅', '🌤️', '☀️', '🌈', '🌸', '🎉', '🌙'];
+const dayEmojis = ["🌅", "🌤️", "☀️", "🌈", "🌸", "🎉", "🌙"];
 
 interface DraggableMealProps {
   id: string;
@@ -39,10 +74,11 @@ interface DraggableMealProps {
 }
 
 function DraggableMeal({ id, recipe, onClick }: DraggableMealProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id,
-    data: { recipe },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id,
+      data: { recipe },
+    });
 
   const style = transform
     ? {
@@ -55,7 +91,7 @@ function DraggableMeal({ id, recipe, onClick }: DraggableMealProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={cn('relative', isDragging && 'opacity-50')}
+      className={cn("relative", isDragging && "opacity-50")}
     >
       <div
         {...listeners}
@@ -86,8 +122,8 @@ function DroppableMealSlot({ id, children }: DroppableMealSlotProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-2xl transition-all duration-200 min-h-[80px] group',
-        isOver && 'ring-2 ring-primary ring-offset-2 bg-primary/10'
+        "rounded-2xl transition-all duration-200 min-h-[80px] group",
+        isOver && "ring-2 ring-primary ring-offset-2 bg-primary/10"
       )}
     >
       {children}
@@ -96,10 +132,31 @@ function DroppableMealSlot({ id, children }: DroppableMealSlotProps) {
 }
 
 export default function WeeklyMenu() {
-  const { weeklyMenu, generateWeeklyMenu, clearWeeklyMenu, recipes, swapMeals } = useRecipes();
+  const {
+    weeklyMenu,
+    generateWeeklyMenu,
+    clearWeeklyMenu,
+    recipes,
+    swapMeals,
+  } = useRecipes();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null);
+  const [currentWeek, setCurrentWeek] = useState(getWeekRange()); // 🗓 CHANGE
+  useEffect(() => {
+    // 🗓 CHANGE
+    const timer = setInterval(() => {
+      setCurrentWeek(getWeekRange());
+    }, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    // 🗓 CHANGE
+    const d = new Date(currentWeek.start);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -115,8 +172,11 @@ export default function WeeklyMenu() {
     })
   );
 
-  const hasMenu = Object.values(weeklyMenu).some(dayMeals => 
-    dayMeals.breakfast !== null || dayMeals.lunch !== null || dayMeals.dinner !== null
+  const hasMenu = Object.values(weeklyMenu).some(
+    (dayMeals) =>
+      dayMeals.breakfast !== null ||
+      dayMeals.lunch !== null ||
+      dayMeals.dinner !== null
   );
   const hasRecipes = recipes.length > 0;
 
@@ -137,8 +197,14 @@ export default function WeeklyMenu() {
     if (!over || active.id === over.id) return;
 
     // Parse the IDs to get day and meal type
-    const [fromDay, fromMeal] = (active.id as string).split('-') as [DayOfWeek, MealType];
-    const [toDay, toMeal] = (over.id as string).split('-') as [DayOfWeek, MealType];
+    const [fromDay, fromMeal] = (active.id as string).split("-") as [
+      DayOfWeek,
+      MealType
+    ];
+    const [toDay, toMeal] = (over.id as string).split("-") as [
+      DayOfWeek,
+      MealType
+    ];
 
     swapMeals(fromDay, fromMeal, toDay, toMeal);
   };
@@ -148,6 +214,10 @@ export default function WeeklyMenu() {
       title="Weekly Menu"
       subtitle="Your personalized 7-day meal plan — drag dishes to rearrange"
     >
+      <h2 className="text-xl font-display font-bold mb-6">
+        {formatWeekRange(currentWeek.start, currentWeek.end)} {/* 🗓 CHANGE */}
+      </h2>
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-4 mb-8">
         <Button
@@ -156,7 +226,7 @@ export default function WeeklyMenu() {
           className="btn-primary gap-2"
         >
           <Shuffle className="w-5 h-5" />
-          {hasMenu ? 'Regenerate Menu' : 'Generate Weekly Menu'}
+          {hasMenu ? "Regenerate Menu" : "Generate Weekly Menu"}
         </Button>
         {hasMenu && (
           <Button
@@ -179,7 +249,8 @@ export default function WeeklyMenu() {
             Add some recipes first
           </h3>
           <p className="text-muted-foreground">
-            Go to My Dishes to add recipes, then come back to generate your menu.
+            Go to My Dishes to add recipes, then come back to generate your
+            menu.
           </p>
         </div>
       ) : !hasMenu ? (
@@ -191,7 +262,8 @@ export default function WeeklyMenu() {
             Ready to plan your week?
           </h3>
           <p className="text-muted-foreground mb-6">
-            Click the button above to automatically create a delicious 7-day menu!
+            Click the button above to automatically create a delicious 7-day
+            menu!
           </p>
         </div>
       ) : (
@@ -208,16 +280,24 @@ export default function WeeklyMenu() {
                 <div
                   key={day}
                   className={cn(
-                    'rounded-3xl p-1 animate-fade-in',
+                    "rounded-3xl p-1 animate-fade-in",
                     dayColors[dayIndex]
                   )}
                   style={{ animationDelay: `${dayIndex * 0.08}s` }}
                 >
                   <div className="bg-card rounded-[1.25rem] p-4">
                     {/* Day header */}
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-3 mb-4">
                       <span className="text-xl">{dayEmojis[dayIndex]}</span>
-                      <h3 className="font-display font-bold text-lg">{day}</h3>
+                      <h3 className="font-display font-bold text-lg">
+                        {days[dayIndex].toLocaleDateString(undefined, {
+                          weekday: "short",
+                        })}{" "}
+                        {days[dayIndex].toLocaleDateString(undefined, {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                      </h3>
                     </div>
 
                     {/* Meals grid */}
@@ -226,14 +306,10 @@ export default function WeeklyMenu() {
                         const dish = dayMeals[mealType];
                         const config = mealTypeConfig[mealType];
                         const slotId = `${day}-${mealType}`;
-                        
+
                         return (
                           <DroppableMealSlot key={mealType} id={slotId}>
                             <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>{config.emoji}</span>
-                                <span className="font-medium">{config.label}</span>
-                              </div>
                               {dish ? (
                                 <DraggableMeal
                                   id={slotId}
@@ -242,7 +318,9 @@ export default function WeeklyMenu() {
                                 />
                               ) : (
                                 <div className="h-20 rounded-2xl bg-muted/50 flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-                                  <p className="text-muted-foreground text-sm">Drop here</p>
+                                  <p className="text-muted-foreground text-sm">
+                                    Drop here
+                                  </p>
                                 </div>
                               )}
                             </div>

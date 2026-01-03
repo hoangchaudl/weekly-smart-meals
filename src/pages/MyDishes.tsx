@@ -1,44 +1,33 @@
-import { useState } from 'react';
-import { MainLayout } from '@/components/layout/MainLayout';
-import { DishCard } from '@/components/recipes/DishCard';
-import { RecipeModal } from '@/components/recipes/RecipeModal';
-import { AddRecipeModal } from '@/components/recipes/AddRecipeModal';
-import { EditRecipeModal } from '@/components/recipes/EditRecipeModal';
-import { DeleteConfirmModal } from '@/components/recipes/DeleteConfirmModal';
-import { useRecipes } from '@/context/RecipeContext';
-import { Recipe } from '@/types/recipe';
-import { Button } from '@/components/ui/button';
-import { Plus, Search, ChefHat } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { DishCard } from "@/components/recipes/DishCard";
+import { RecipeModal } from "@/components/recipes/RecipeModal";
+import { AddRecipeModal } from "@/components/recipes/AddRecipeModal";
+// 🔧 CHANGE: removed EditRecipeModal & DeleteConfirmModal imports
+import { useRecipes } from "@/context/RecipeContext";
+import { Recipe } from "@/types/recipe";
+import { Button } from "@/components/ui/button";
+import { Plus, Search, ChefHat } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export default function MyDishes() {
-  const { recipes, deleteRecipe } = useRecipes();
-  const { toast } = useToast();
+  const { recipes } = useRecipes(); // 🔧 CHANGE: deleteRecipe no longer needed here
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
-  const [deletingRecipe, setDeletingRecipe] = useState<Recipe | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredRecipes = recipes.filter(recipe =>
-    recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  // 🔧 CHANGE: removed editingRecipe & deletingRecipe states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredRecipes = recipes.filter(
+    (recipe) =>
+      recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      recipe.ingredients.some((ing) =>
+        ing.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
   );
 
-  const handleDelete = () => {
-    if (deletingRecipe) {
-      deleteRecipe(deletingRecipe.id);
-      toast({ title: '🗑️ Recipe deleted' });
-      setDeletingRecipe(null);
-    }
-  };
-
   return (
-    <MainLayout
-      title="My Dishes"
-      subtitle="Your personal recipe collection"
-    >
+    <MainLayout title="My Dishes" subtitle="Your personal recipe collection">
       {/* Search and Add */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
@@ -73,8 +62,7 @@ export default function MyDishes() {
                 onClick={() => setSelectedRecipe(recipe)}
                 showShelfIndicator
                 showActions
-                onEdit={() => setEditingRecipe(recipe)}
-                onDelete={() => setDeletingRecipe(recipe)}
+                // 🔧 CHANGE: no onEdit / onDelete props anymore
               />
             </div>
           ))}
@@ -85,16 +73,18 @@ export default function MyDishes() {
             <ChefHat className="w-10 h-10 text-muted-foreground" />
           </div>
           <h3 className="text-xl font-display font-bold text-foreground mb-2">
-            {searchQuery ? 'No dishes found' : 'No dishes yet'}
+            {searchQuery ? "No dishes found" : "No dishes yet"}
           </h3>
           <p className="text-muted-foreground mb-6">
-            {searchQuery 
-              ? 'Try a different search term'
-              : 'Add your first recipe to get started!'
-            }
+            {searchQuery
+              ? "Try a different search term"
+              : "Add your first recipe to get started!"}
           </p>
           {!searchQuery && (
-            <Button onClick={() => setIsAddModalOpen(true)} className="btn-primary">
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn-primary"
+            >
               <Plus className="w-5 h-5 mr-2" />
               Add Your First Dish
             </Button>
@@ -109,20 +99,7 @@ export default function MyDishes() {
         onClose={() => setSelectedRecipe(null)}
       />
 
-      {/* Edit recipe modal */}
-      <EditRecipeModal
-        recipe={editingRecipe}
-        open={!!editingRecipe}
-        onClose={() => setEditingRecipe(null)}
-      />
-
-      {/* Delete confirmation */}
-      <DeleteConfirmModal
-        recipe={deletingRecipe}
-        open={!!deletingRecipe}
-        onClose={() => setDeletingRecipe(null)}
-        onConfirm={handleDelete}
-      />
+      {/* 🔧 CHANGE: Edit & Delete modals removed — now live inside DishCard */}
 
       {/* Add recipe modal */}
       <AddRecipeModal
