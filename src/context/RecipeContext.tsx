@@ -25,6 +25,7 @@ import {
   addShelfItemDb,
   removeShelfItemDb,
 } from "@/services/recipeService";
+import { supabase } from "@/integrations/supabase/client"; // 👈 Import Supabase
 
 interface RecipeContextType {
   recipes: Recipe[];
@@ -49,7 +50,7 @@ interface RecipeContextType {
   addShelfItem: (item: Omit<ShelfItem, "id">) => Promise<void>;
   removeShelfItem: (id: string) => Promise<void>;
   isOnShelf: (ingredientName: string) => boolean;
-  getShelfItem: (ingredientName: string) => ShelfItem | undefined; // 👈 CRITICAL NEW LINE
+  getShelfItem: (ingredientName: string) => ShelfItem | undefined;
 }
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
@@ -72,12 +73,57 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
 
   const [shelfItems, setShelfItems] = useState<ShelfItem[]>([]);
 
+  // 👇 MOVED: Helper to load all data
+  const loadUserData = async () => {
+    try {
+      // 1. Fetch all data in parallel
+      const [recipesData, menuData, shelfData] = await Promise.all([
+        fetchRecipes(),
+        fetchWeeklySchedule(),
+        fetchShelfItems(),
+      ]);
+
+      // 2. Update State
+      setRecipes(recipesData || []);
+      if (menuData) {
+        setWeeklyMenu(menuData);
+      } else {
+        // Reset menu if new user has none
+        const emptyMenu: WeeklyMenu = {};
+        DAYS_OF_WEEK.forEach((d) => (emptyMenu[d] = createEmptyDayMeals()));
+        setWeeklyMenu(emptyMenu);
+      }
+      setShelfItems(shelfData || []);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  // 👇 UPDATED: Effect listens for Login/Logout
   useEffect(() => {
-    fetchRecipes().then(setRecipes).catch(console.error);
-    fetchWeeklySchedule().then((savedMenu) => {
-      if (savedMenu) setWeeklyMenu(savedMenu);
+    // Load initially
+    loadUserData();
+
+    // Listen for Auth Changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") {
+        // User logged in? Fetch their specific data
+        loadUserData();
+      } else if (event === "SIGNED_OUT") {
+        // User logged out? Wipe the memory immediately!
+        setRecipes([]);
+        setShelfItems([]);
+        const emptyMenu: WeeklyMenu = {};
+        DAYS_OF_WEEK.forEach((d) => (emptyMenu[d] = createEmptyDayMeals()));
+        setWeeklyMenu(emptyMenu);
+      }
     });
-    fetchShelfItems().then(setShelfItems).catch(console.error);
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const addRecipe = async (recipe: Omit<Recipe, "id">) => {
@@ -157,7 +203,6 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   const isOnShelf = (name: string) =>
     shelfItems.some((i) => i.name.toLowerCase() === name.toLowerCase());
 
-  // 👇 CRITICAL NEW FUNCTION
   const getShelfItem = (name: string) => {
     return shelfItems.find((i) => i.name.toLowerCase() === name.toLowerCase());
   };
@@ -178,7 +223,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         addShelfItem,
         removeShelfItem,
         isOnShelf,
-        getShelfItem, // 👈 Don't forget to export it!
+        getShelfItem,
       }}
     >
       {children}
