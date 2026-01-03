@@ -19,6 +19,11 @@ import {
   createRecipe,
   updateRecipeDb,
   deleteRecipeDb,
+  fetchWeeklySchedule,
+  saveWeeklySchedule,
+  fetchShelfItems,
+  addShelfItemDb,
+  removeShelfItemDb,
 } from "@/services/recipeService";
 
 interface RecipeContextType {
@@ -41,9 +46,10 @@ interface RecipeContextType {
     toDay: DayOfWeek,
     toMeal: MealType
   ) => void;
-  addShelfItem: (item: Omit<ShelfItem, "id">) => void;
-  removeShelfItem: (id: string) => void;
+  addShelfItem: (item: Omit<ShelfItem, "id">) => Promise<void>;
+  removeShelfItem: (id: string) => Promise<void>;
   isOnShelf: (ingredientName: string) => boolean;
+  getShelfItem: (ingredientName: string) => ShelfItem | undefined; // 👈 CRITICAL NEW LINE
 }
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
@@ -64,16 +70,14 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     return menu;
   });
 
-  const [shelfItems, setShelfItems] = useState<ShelfItem[]>([
-    { id: "1", name: "Olive oil", unit: "tbsp" },
-    { id: "2", name: "Soy sauce", unit: "tbsp" },
-    { id: "3", name: "Garlic", unit: "cloves" },
-    { id: "4", name: "Salt", unit: "tsp" },
-    { id: "5", name: "Pepper", unit: "tsp" },
-  ]);
+  const [shelfItems, setShelfItems] = useState<ShelfItem[]>([]);
 
   useEffect(() => {
     fetchRecipes().then(setRecipes).catch(console.error);
+    fetchWeeklySchedule().then((savedMenu) => {
+      if (savedMenu) setWeeklyMenu(savedMenu);
+    });
+    fetchShelfItems().then(setShelfItems).catch(console.error);
   }, []);
 
   const addRecipe = async (recipe: Omit<Recipe, "id">) => {
@@ -91,60 +95,72 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     setRecipes(await fetchRecipes());
   };
 
+  const updateMenu = (newMenu: WeeklyMenu) => {
+    setWeeklyMenu(newMenu);
+    saveWeeklySchedule(newMenu).catch((err) =>
+      console.error("Failed to save menu:", err)
+    );
+  };
+
   const generateWeeklyMenu = () => {
     if (!recipes.length) return;
-
     const newMenu: WeeklyMenu = {};
     DAYS_OF_WEEK.forEach((day, i) => {
       const byType = (t: MealType) =>
         recipes.filter((r) => r.mealType === t)[i % recipes.length] || null;
-
       newMenu[day] = {
         breakfast: byType("breakfast"),
         lunch: byType("lunch"),
         dinner: byType("dinner"),
       };
     });
-
-    setWeeklyMenu(newMenu);
+    updateMenu(newMenu);
   };
 
   const clearWeeklyMenu = () => {
     const menu: WeeklyMenu = {};
     DAYS_OF_WEEK.forEach((d) => (menu[d] = createEmptyDayMeals()));
-    setWeeklyMenu(menu);
+    updateMenu(menu);
   };
 
   const setMealForDay = (
     day: DayOfWeek,
     meal: MealType,
     recipe: Recipe | null
-  ) =>
-    setWeeklyMenu((p) => ({
-      ...p,
-      [day]: { ...p[day], [meal]: recipe },
-    }));
+  ) => {
+    const newMenu = { ...weeklyMenu };
+    newMenu[day] = { ...newMenu[day], [meal]: recipe };
+    updateMenu(newMenu);
+  };
 
   const swapMeals = (
     fd: DayOfWeek,
     fm: MealType,
     td: DayOfWeek,
     tm: MealType
-  ) =>
-    setWeeklyMenu((p) => {
-      const next = structuredClone(p);
-      [next[fd][fm], next[td][tm]] = [next[td][tm], next[fd][fm]];
-      return next;
-    });
+  ) => {
+    const newMenu = structuredClone(weeklyMenu);
+    [newMenu[fd][fm], newMenu[td][tm]] = [newMenu[td][tm], newMenu[fd][fm]];
+    updateMenu(newMenu);
+  };
 
-  const addShelfItem = (item: Omit<ShelfItem, "id">) =>
-    setShelfItems((p) => [...p, { ...item, id: Date.now().toString() }]);
+  const addShelfItem = async (item: Omit<ShelfItem, "id">) => {
+    await addShelfItemDb(item);
+    setShelfItems(await fetchShelfItems());
+  };
 
-  const removeShelfItem = (id: string) =>
-    setShelfItems((p) => p.filter((i) => i.id !== id));
+  const removeShelfItem = async (id: string) => {
+    await removeShelfItemDb(id);
+    setShelfItems(await fetchShelfItems());
+  };
 
   const isOnShelf = (name: string) =>
     shelfItems.some((i) => i.name.toLowerCase() === name.toLowerCase());
+
+  // 👇 CRITICAL NEW FUNCTION
+  const getShelfItem = (name: string) => {
+    return shelfItems.find((i) => i.name.toLowerCase() === name.toLowerCase());
+  };
 
   return (
     <RecipeContext.Provider
@@ -162,6 +178,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         addShelfItem,
         removeShelfItem,
         isOnShelf,
+        getShelfItem, // 👈 Don't forget to export it!
       }}
     >
       {children}

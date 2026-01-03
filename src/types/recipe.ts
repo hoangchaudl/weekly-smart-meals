@@ -42,15 +42,18 @@ export interface WeeklyMenu {
 export interface ShelfItem {
   id: string;
   name: string;
+  amount: number; // <--- New field
   unit: string;
 }
 
+// Update GroceryItem to hold shelf info too
 export interface GroceryItem {
   name: string;
   amount: number;
   unit: string;
   category: IngredientCategory;
-  onShelf?: boolean;
+  onShelfAmount?: number; // <--- New: How much we have
+  onShelfUnit?: string; // <--- New: The unit we have
 }
 
 export const DAYS_OF_WEEK = [

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,13 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [instructionVideoUrl, setInstructionVideoUrl] = useState("");
 
+  // Refs for auto-focus
+  const lastIngredientRef = useRef<HTMLInputElement | null>(null);
+  const lastStepRef = useRef<HTMLInputElement | null>(null);
+  const [autoFocusTarget, setAutoFocusTarget] = useState<
+    "ingredient" | "step" | null
+  >(null);
+
   const [name, setName] = useState("");
   const [prepTime, setPrepTime] = useState(30);
   const [batchServings, setBatchServings] = useState(4);
@@ -60,11 +67,23 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     null
   );
 
+  // Auto-focus effect
+  useEffect(() => {
+    if (autoFocusTarget === "ingredient" && lastIngredientRef.current) {
+      lastIngredientRef.current.focus();
+      setAutoFocusTarget(null);
+    } else if (autoFocusTarget === "step" && lastStepRef.current) {
+      lastStepRef.current.focus();
+      setAutoFocusTarget(null);
+    }
+  }, [ingredients.length, steps.length, autoFocusTarget]);
+
   const handleAddIngredient = () => {
     setIngredients([
       ...ingredients,
       { name: "", amount: 0, unit: "g", category: "vegetables_fruits" },
     ]);
+    setAutoFocusTarget("ingredient");
   };
 
   const handleRemoveIngredient = (index: number) => {
@@ -81,8 +100,20 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     setIngredients(newIngredients);
   };
 
+  // Keyboard handler for Ingredients
+  const handleIngredientKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Tab" && !e.shiftKey) {
+      // Only trigger if it's the last item in the list
+      if (index === ingredients.length - 1) {
+        e.preventDefault();
+        handleAddIngredient();
+      }
+    }
+  };
+
   const handleAddStep = () => {
     setSteps([...steps, ""]);
+    setAutoFocusTarget("step");
   };
 
   const handleRemoveStep = (index: number) => {
@@ -95,11 +126,21 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     setSteps(newSteps);
   };
 
+  // Keyboard handler for Steps
+  const handleStepKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) {
+      // Trigger on Enter OR Tab for better flow
+      if (index === steps.length - 1 && steps[index].trim() !== "") {
+        e.preventDefault();
+        handleAddStep();
+      }
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Convert to base64
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -171,7 +212,6 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     }
   };
 
-  // --- UPDATED FUNCTION START ---
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast({ title: "Please enter a dish name", variant: "destructive" });
@@ -213,15 +253,11 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     };
 
     try {
-      // Wait for the database operation to finish
       await addRecipe(recipe);
-
-      // If successful, show success toast
       toast({ title: "🎉 Recipe added successfully!" });
       handleReset();
       onClose();
     } catch (error) {
-      // If error, show the real error message
       console.error("Add Recipe Error:", error);
       toast({
         title: "Failed to save recipe",
@@ -231,7 +267,6 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
       });
     }
   };
-  // --- UPDATED FUNCTION END ---
 
   const handleReset = () => {
     setName("");
@@ -245,6 +280,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     setSteps([""]);
     setConfidence(null);
     setInstructionVideoUrl("");
+    setAutoFocusTarget(null);
   };
 
   const getConfidenceColor = (level?: "high" | "medium" | "low") => {
@@ -459,6 +495,12 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
               {ingredients.map((ing, index) => (
                 <div key={index} className="flex gap-2 items-center">
                   <Input
+                    /* Add Ref to the LAST item only */
+                    ref={
+                      index === ingredients.length - 1
+                        ? lastIngredientRef
+                        : null
+                    }
                     placeholder="Name"
                     value={ing.name}
                     onChange={(e) =>
@@ -485,6 +527,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
                     onChange={(e) =>
                       handleIngredientChange(index, "unit", e.target.value)
                     }
+                    /* Optional: If you prefer tabbing here, move the handler here! */
                     className="w-16 rounded-xl"
                   />
                   <Select
@@ -497,7 +540,11 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
                       )
                     }
                   >
-                    <SelectTrigger className="w-28 rounded-xl">
+                    <SelectTrigger
+                      className="w-28 rounded-xl"
+                      /* 🔥 SMART TAB TRIGGER HERE */
+                      onKeyDown={(e) => handleIngredientKeyDown(e, index)}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -546,9 +593,13 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
                     {index + 1}
                   </div>
                   <Input
+                    /* Add Ref to the LAST item only */
+                    ref={index === steps.length - 1 ? lastStepRef : null}
                     placeholder={`Step ${index + 1}...`}
                     value={step}
                     onChange={(e) => handleStepChange(index, e.target.value)}
+                    /* 🔥 SMART TAB TRIGGER HERE */
+                    onKeyDown={(e) => handleStepKeyDown(e, index)}
                     className="flex-1 rounded-xl"
                   />
                   <Button
