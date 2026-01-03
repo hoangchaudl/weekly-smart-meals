@@ -9,27 +9,45 @@ import WeeklyMenu from "./pages/WeeklyMenu";
 import GroceryList from "./pages/GroceryList";
 import MealPrep from "./pages/MealPrep";
 import NotFound from "./pages/NotFound";
+import { useAuth } from "@/context/AuthContext";
+import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <RecipeProvider>
+// 1. I removed <BrowserRouter> from here because we moved it up!
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<MyDishes />} />
+    <Route path="/weekly-menu" element={<WeeklyMenu />} />
+    <Route path="/grocery-list" element={<GroceryList />} />
+    <Route path="/meal-prep" element={<MealPrep />} />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
+
+const App = () => {
+  const { session } = useAuth();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
         <Toaster />
         <Sonner />
+
+        {/* 2. I moved <BrowserRouter> here so it wraps EVERYTHING */}
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<MyDishes />} />
-            <Route path="/weekly-menu" element={<WeeklyMenu />} />
-            <Route path="/grocery-list" element={<GroceryList />} />
-            <Route path="/meal-prep" element={<MealPrep />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          {/* 🔐 AUTH GATE */}
+          {!session ? (
+            <Login />
+          ) : (
+            <RecipeProvider>
+              <AppRoutes />
+            </RecipeProvider>
+          )}
         </BrowserRouter>
-      </RecipeProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
