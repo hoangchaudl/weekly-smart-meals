@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
 import {
   Recipe,
   WeeklyMenu,
@@ -8,15 +14,20 @@ import {
   MealType,
   DayMeals,
 } from "@/types/recipe";
-import { sampleRecipes } from "@/data/sampleRecipes";
+import {
+  fetchRecipes,
+  createRecipe,
+  updateRecipeDb,
+  deleteRecipeDb,
+} from "@/services/recipeService";
 
 interface RecipeContextType {
   recipes: Recipe[];
   weeklyMenu: WeeklyMenu;
   shelfItems: ShelfItem[];
-  addRecipe: (recipe: Omit<Recipe, "id">) => void;
-  updateRecipe: (recipe: Recipe) => void;
-  deleteRecipe: (id: string) => void;
+  addRecipe: (recipe: Omit<Recipe, "id">) => Promise<void>;
+  updateRecipe: (recipe: Recipe) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
   generateWeeklyMenu: () => void;
   clearWeeklyMenu: () => void;
   setMealForDay: (
@@ -44,7 +55,7 @@ const createEmptyDayMeals = (): DayMeals => ({
 });
 
 export function RecipeProvider({ children }: { children: ReactNode }) {
-  const [recipes, setRecipes] = useState<Recipe[]>(sampleRecipes);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenu>(() => {
     const menu: WeeklyMenu = {};
     DAYS_OF_WEEK.forEach((day) => {
@@ -52,6 +63,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     });
     return menu;
   });
+
   const [shelfItems, setShelfItems] = useState<ShelfItem[]>([
     { id: "1", name: "Olive oil", unit: "tbsp" },
     { id: "2", name: "Soy sauce", unit: "tbsp" },
@@ -60,52 +72,37 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     { id: "5", name: "Pepper", unit: "tsp" },
   ]);
 
-  const addRecipe = (recipe: Omit<Recipe, "id">) => {
-    const newRecipe: Recipe = {
-      ...recipe,
-      id: Date.now().toString(),
-    };
-    setRecipes((prev) => [...prev, newRecipe]);
+  useEffect(() => {
+    fetchRecipes().then(setRecipes).catch(console.error);
+  }, []);
+
+  const addRecipe = async (recipe: Omit<Recipe, "id">) => {
+    await createRecipe(recipe);
+    setRecipes(await fetchRecipes());
   };
 
-  const updateRecipe = (recipe: Recipe) => {
-    setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? recipe : r)));
+  const updateRecipe = async (recipe: Recipe) => {
+    await updateRecipeDb(recipe);
+    setRecipes(await fetchRecipes());
   };
 
-  const deleteRecipe = (id: string) => {
-    setRecipes((prev) => prev.filter((r) => r.id !== id));
+  const deleteRecipe = async (id: string) => {
+    await deleteRecipeDb(id);
+    setRecipes(await fetchRecipes());
   };
 
   const generateWeeklyMenu = () => {
-    if (recipes.length === 0) return;
-
-    // Group recipes by meal type
-    const breakfastRecipes = recipes.filter((r) => r.mealType === "breakfast");
-    const lunchRecipes = recipes.filter((r) => r.mealType === "lunch");
-    const dinnerRecipes = recipes.filter((r) => r.mealType === "dinner");
-
-    // Shuffle each group
-    const shuffledBreakfast = [...breakfastRecipes].sort(
-      () => Math.random() - 0.5
-    );
-    const shuffledLunch = [...lunchRecipes].sort(() => Math.random() - 0.5);
-    const shuffledDinner = [...dinnerRecipes].sort(() => Math.random() - 0.5);
+    if (!recipes.length) return;
 
     const newMenu: WeeklyMenu = {};
-    DAYS_OF_WEEK.forEach((day, index) => {
+    DAYS_OF_WEEK.forEach((day, i) => {
+      const byType = (t: MealType) =>
+        recipes.filter((r) => r.mealType === t)[i % recipes.length] || null;
+
       newMenu[day] = {
-        breakfast:
-          shuffledBreakfast.length > 0
-            ? shuffledBreakfast[index % shuffledBreakfast.length]
-            : null,
-        lunch:
-          shuffledLunch.length > 0
-            ? shuffledLunch[index % shuffledLunch.length]
-            : null,
-        dinner:
-          shuffledDinner.length > 0
-            ? shuffledDinner[index % shuffledDinner.length]
-            : null,
+        breakfast: byType("breakfast"),
+        lunch: byType("lunch"),
+        dinner: byType("dinner"),
       };
     });
 
@@ -114,62 +111,40 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
 
   const clearWeeklyMenu = () => {
     const menu: WeeklyMenu = {};
-    DAYS_OF_WEEK.forEach((day) => {
-      menu[day] = createEmptyDayMeals();
-    });
+    DAYS_OF_WEEK.forEach((d) => (menu[d] = createEmptyDayMeals()));
     setWeeklyMenu(menu);
   };
 
   const setMealForDay = (
     day: DayOfWeek,
-    mealType: MealType,
+    meal: MealType,
     recipe: Recipe | null
-  ) => {
-    setWeeklyMenu((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [mealType]: recipe,
-      },
+  ) =>
+    setWeeklyMenu((p) => ({
+      ...p,
+      [day]: { ...p[day], [meal]: recipe },
     }));
-  };
 
   const swapMeals = (
-    fromDay: DayOfWeek,
-    fromMeal: MealType,
-    toDay: DayOfWeek,
-    toMeal: MealType
-  ) => {
-    setWeeklyMenu((prev) => {
-      const next: WeeklyMenu = structuredClone(prev);
-
-      const fromRecipe = next[fromDay][fromMeal];
-      const toRecipe = next[toDay][toMeal];
-
-      next[fromDay][fromMeal] = toRecipe;
-      next[toDay][toMeal] = fromRecipe;
-
+    fd: DayOfWeek,
+    fm: MealType,
+    td: DayOfWeek,
+    tm: MealType
+  ) =>
+    setWeeklyMenu((p) => {
+      const next = structuredClone(p);
+      [next[fd][fm], next[td][tm]] = [next[td][tm], next[fd][fm]];
       return next;
     });
-  };
 
-  const addShelfItem = (item: Omit<ShelfItem, "id">) => {
-    const newItem: ShelfItem = {
-      ...item,
-      id: Date.now().toString(),
-    };
-    setShelfItems((prev) => [...prev, newItem]);
-  };
+  const addShelfItem = (item: Omit<ShelfItem, "id">) =>
+    setShelfItems((p) => [...p, { ...item, id: Date.now().toString() }]);
 
-  const removeShelfItem = (id: string) => {
-    setShelfItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  const removeShelfItem = (id: string) =>
+    setShelfItems((p) => p.filter((i) => i.id !== id));
 
-  const isOnShelf = (ingredientName: string) => {
-    return shelfItems.some(
-      (item) => item.name.toLowerCase() === ingredientName.toLowerCase()
-    );
-  };
+  const isOnShelf = (name: string) =>
+    shelfItems.some((i) => i.name.toLowerCase() === name.toLowerCase());
 
   return (
     <RecipeContext.Provider
@@ -195,9 +170,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
 }
 
 export function useRecipes() {
-  const context = useContext(RecipeContext);
-  if (context === undefined) {
-    throw new Error("useRecipes must be used within a RecipeProvider");
-  }
-  return context;
+  const ctx = useContext(RecipeContext);
+  if (!ctx) throw new Error("useRecipes must be used within RecipeProvider");
+  return ctx;
 }
