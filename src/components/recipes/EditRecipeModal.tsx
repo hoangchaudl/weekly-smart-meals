@@ -48,8 +48,9 @@ export function EditRecipeModal({
   const [mealType, setMealType] = useState<MealType>("dinner");
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [steps, setSteps] = useState<string[]>([""]);
-  const [instructionVideoUrl, setInstructionVideoUrl] = useState("");
-
+  const [instructionVideoUrl, setInstructionVideoUrl] = useState(
+    recipe.instructionVideoUrl || ""
+  );
   // Populate form when recipe changes
   useEffect(() => {
     if (recipe) {

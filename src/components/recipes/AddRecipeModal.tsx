@@ -40,47 +40,6 @@ interface ExtractedConfidence {
   steps?: "high" | "medium" | "low";
 }
 
-// 🧂 Auto-categorization lists (Must be lowercase)
-const AUTO_SEASONINGS = [
-  "olive oil",
-  "butter",
-  "salt",
-  "paprika",
-  "honey",
-  "sugar",
-  "oil",
-  "soy sauce",
-  "fish sauce",
-];
-
-const AUTO_PROTEIN = [
-  "chicken",
-  "salmon",
-  "steak",
-  "tofu",
-  "egg",
-  "eggs",
-  "greek yogurt",
-];
-
-// 🥦 Combined Veg & Fruit list (Since the app uses one category for both)
-const AUTO_VEG_FRUIT = [
-  "boy choy", // User specific
-  "bok choy", // Correction just in case
-  "red cabbage",
-  "cabbage",
-  "potato",
-  "potatoes",
-  "sweet potato",
-  "sweet potatoes",
-  "kale",
-  "green onion",
-  "green onions",
-  "cilantro",
-  "orange",
-  "mango",
-];
-
 export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
   const { addRecipe } = useRecipes();
   const { toast } = useToast();
@@ -137,22 +96,7 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
     value: any
   ) => {
     const newIngredients = [...ingredients];
-    const updatedIngredient = { ...newIngredients[index], [field]: value };
-
-    // ✨ Auto-detect Category logic
-    if (field === "name" && typeof value === "string") {
-      const lowerName = value.trim().toLowerCase();
-
-      if (AUTO_SEASONINGS.includes(lowerName)) {
-        updatedIngredient.category = "seasonings";
-      } else if (AUTO_PROTEIN.includes(lowerName)) {
-        updatedIngredient.category = "protein";
-      } else if (AUTO_VEG_FRUIT.includes(lowerName)) {
-        updatedIngredient.category = "vegetables_fruits";
-      }
-    }
-
-    newIngredients[index] = updatedIngredient;
+    newIngredients[index] = { ...newIngredients[index], [field]: value };
     setIngredients(newIngredients);
   };
 
@@ -678,22 +622,6 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
             >
               <Plus className="w-4 h-4 mr-1" /> Add Step
             </Button>
-          </div>
-
-          {/* 🎬 Instruction Video */}
-          <div>
-            <Label className="text-sm font-medium">
-              Instruction Video (optional)
-            </Label>
-            <Input
-              placeholder="YouTube / Instagram / mp4 link..."
-              value={instructionVideoUrl}
-              onChange={(e) => setInstructionVideoUrl(e.target.value)}
-              className="mt-1.5 rounded-xl"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Supports YouTube, Instagram Reels, or direct video links.
-            </p>
           </div>
 
           {/* Actions */}

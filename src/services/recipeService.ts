@@ -1,46 +1,79 @@
-// NOTE: This file contains stubs for database operations.
-// The actual database tables have not been created yet.
-// The app currently uses local state via RecipeContext.
-
+import { supabase } from "@/integrations/supabase/client";
 import { WeeklyMenu } from "@/types/recipe";
 
 // --- RECIPES ---
 export async function fetchRecipes() {
-  // Stub: Return empty array until DB is set up
-  console.warn("fetchRecipes: Database not configured, returning empty array");
-  return [];
+  const { data, error } = await supabase
+    .from("recipes")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createRecipe(recipe: any) {
-  console.warn("createRecipe: Database not configured");
-  throw new Error("Database not configured");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("recipes").insert({
+    ...recipe,
+    user_id: user?.id,
+  });
+  if (error) throw error;
 }
 
 export async function updateRecipeDb(recipe: any) {
-  console.warn("updateRecipeDb: Database not configured");
-  throw new Error("Database not configured");
+  const { error } = await supabase
+    .from("recipes")
+    .update(recipe)
+    .eq("id", recipe.id);
+  if (error) throw error;
 }
 
 export async function deleteRecipeDb(id: string) {
-  console.warn("deleteRecipeDb: Database not configured");
-  throw new Error("Database not configured");
+  const { error } = await supabase.from("recipes").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // --- WEEKLY MENU ---
-export async function fetchWeeklySchedule(): Promise<WeeklyMenu | null> {
-  console.warn("fetchWeeklySchedule: Database not configured");
-  return null;
+export async function fetchWeeklySchedule() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("weekly_schedule")
+    .select("menu")
+    .eq("user_id", user.id)
+    .single();
+
+  if (error && error.code !== "PGRST116") console.error(error);
+  return data?.menu || null;
 }
 
 export async function saveWeeklySchedule(menu: WeeklyMenu) {
-  console.warn("saveWeeklySchedule: Database not configured");
-  throw new Error("Database not configured");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("weekly_schedule")
+    .upsert({ user_id: user.id, menu: menu });
+  if (error) throw error;
 }
 
-// --- MY SHELF ---
+// --- MY SHELF (New!) ---
 export async function fetchShelfItems() {
-  console.warn("fetchShelfItems: Database not configured");
-  return [];
+  const { data, error } = await supabase
+    .from("shelf_items")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function addShelfItemDb(item: {
@@ -48,11 +81,19 @@ export async function addShelfItemDb(item: {
   amount: number;
   unit: string;
 }) {
-  console.warn("addShelfItemDb: Database not configured");
-  throw new Error("Database not configured");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase.from("shelf_items").insert({
+    ...item,
+    user_id: user.id,
+  });
+  if (error) throw error;
 }
 
 export async function removeShelfItemDb(id: string) {
-  console.warn("removeShelfItemDb: Database not configured");
-  throw new Error("Database not configured");
+  const { error } = await supabase.from("shelf_items").delete().eq("id", id);
+  if (error) throw error;
 }
