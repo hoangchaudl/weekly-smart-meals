@@ -680,6 +680,22 @@ export function AddRecipeModal({ open, onClose }: AddRecipeModalProps) {
             </Button>
           </div>
 
+          {/* 🎬 Instruction Video */}
+          <div>
+            <Label className="text-sm font-medium">
+              Instruction Video (optional)
+            </Label>
+            <Input
+              placeholder="YouTube / Instagram / mp4 link..."
+              value={instructionVideoUrl}
+              onChange={(e) => setInstructionVideoUrl(e.target.value)}
+              className="mt-1.5 rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Supports YouTube, Instagram Reels, or direct video links.
+            </p>
+          </div>
+
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
