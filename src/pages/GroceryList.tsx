@@ -20,8 +20,12 @@ const categoryConfig = {
 };
 
 // Local type to handle merged quantities
-interface MergedGroceryItem extends Omit<GroceryItem, "amount" | "unit"> {
+interface MergedGroceryItem {
+  name: string;
+  category: IngredientCategory;
   quantities: { amount: number; unit: string }[];
+  onShelfAmount?: number;
+  onShelfUnit?: string;
 }
 
 export default function GroceryList() {
@@ -63,9 +67,6 @@ export default function GroceryList() {
               quantities: [{ amount: ing.amount, unit: cleanUnit }],
               onShelfAmount: shelfItem?.amount,
               onShelfUnit: shelfItem?.unit,
-              // These dummy values satisfy the Omit type, but we won't use them for display
-              amount: 0,
-              unit: "",
             };
           } else {
             // Existing entry - try to merge amounts if unit matches

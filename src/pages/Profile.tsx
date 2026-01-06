@@ -103,7 +103,7 @@ export default function Profile() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative group">
             <Avatar className="h-32 w-32 border-4 border-background shadow-md">
-              <AvatarImage src={avatarUrl || ""} objectFit="cover" />
+              <AvatarImage src={avatarUrl || ""} className="object-cover" />
               <AvatarFallback className="text-4xl bg-secondary">
                 {fullName?.[0]?.toUpperCase() || "U"}
               </AvatarFallback>
