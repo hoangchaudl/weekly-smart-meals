@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useRecipes } from "@/context/RecipeContext";
-import { GroceryItem, IngredientCategory, MEAL_TYPES } from "@/types/recipe";
-import { Check, Package, Plus, X, Home, AlertCircle } from "lucide-react";
+import { IngredientCategory, MEAL_TYPES, GroceryItem } from "@/types/recipe";
+import { Check, Plus, X, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -14,10 +14,15 @@ const categoryConfig = {
     emoji: "🥦",
     bgColor: "bg-primary/20",
   },
-  protein: { label: "Protein", emoji: "🍗", bgColor: "bg-accent/30" },
+  protein: { label: "Protein", emoji: "🥩", bgColor: "bg-accent/30" },
   seasonings: { label: "Seasonings", emoji: "🧂", bgColor: "bg-secondary/50" },
   others: { label: "Others", emoji: "📦", bgColor: "bg-info/30" },
 };
+
+// Local type to handle merged quantities
+interface MergedGroceryItem extends Omit<GroceryItem, "amount" | "unit"> {
+  quantities: { amount: number; unit: string }[];
+}
 
 export default function GroceryList() {
   const {
@@ -36,7 +41,7 @@ export default function GroceryList() {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   const groceryList = useMemo(() => {
-    const items: Record<string, GroceryItem> = {};
+    const items: Record<string, MergedGroceryItem> = {};
 
     Object.values(weeklyMenu).forEach((dayMeals) => {
       MEAL_TYPES.forEach((mealType) => {
@@ -44,36 +49,38 @@ export default function GroceryList() {
         if (!recipe) return;
 
         recipe.ingredients.forEach((ing) => {
-          // Use name as key to combine same items (e.g. Chicken 100g + Chicken 50g)
-          // We normalize to lowercase to match better
-          const key = ing.name.toLowerCase();
+          // Normalize name and unit
+          const cleanName = ing.name.trim();
+          const cleanUnit = ing.unit.trim().toLowerCase();
+          const key = cleanName.toLowerCase();
 
-          if (items[key]) {
-            // If units match, we can sum them up!
-            if (items[key].unit === ing.unit) {
-              items[key].amount += ing.amount;
-            } else {
-              // If units differ (e.g. g vs kg), we might need a separate entry or advanced conversion.
-              // For simplicity, we create a separate entry if units don't match.
-              const complexKey = `${ing.name}-${ing.unit}`;
-              if (!items[complexKey]) {
-                items[complexKey] = { ...ing, category: ing.category };
-              } else {
-                items[complexKey].amount += ing.amount;
-              }
-            }
-          } else {
-            // Check shelf for this item
-            const shelfItem = getShelfItem(ing.name);
-
+          if (!items[key]) {
+            // New entry
+            const shelfItem = getShelfItem(cleanName);
             items[key] = {
-              name: ing.name,
-              amount: ing.amount,
-              unit: ing.unit,
+              name: cleanName,
               category: ing.category,
+              quantities: [{ amount: ing.amount, unit: cleanUnit }],
               onShelfAmount: shelfItem?.amount,
               onShelfUnit: shelfItem?.unit,
+              // These dummy values satisfy the Omit type, but we won't use them for display
+              amount: 0,
+              unit: "",
             };
+          } else {
+            // Existing entry - try to merge amounts if unit matches
+            const existingQtyIndex = items[key].quantities.findIndex(
+              (q) => q.unit === cleanUnit
+            );
+
+            if (existingQtyIndex >= 0) {
+              items[key].quantities[existingQtyIndex].amount += ing.amount;
+            } else {
+              items[key].quantities.push({
+                amount: ing.amount,
+                unit: cleanUnit,
+              });
+            }
           }
         });
       });
@@ -84,14 +91,19 @@ export default function GroceryList() {
       protein: [],
       seasonings: [],
       others: [],
-    } as Record<IngredientCategory, GroceryItem[]>;
+    } as Record<IngredientCategory, MergedGroceryItem[]>;
 
     Object.values(items).forEach((item) => {
-      grouped[item.category].push(item);
+      const category = item.category || "others";
+      if (grouped[category]) {
+        grouped[category].push(item);
+      } else {
+        grouped.others.push(item);
+      }
     });
 
     return grouped;
-  }, [weeklyMenu, shelfItems]); // Re-run when shelf changes
+  }, [weeklyMenu, shelfItems, getShelfItem]);
 
   const toggleChecked = (key: string) => {
     setCheckedItems((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -114,17 +126,19 @@ export default function GroceryList() {
     }
   };
 
-  // Helper to calculate status
-  const getStatus = (item: GroceryItem) => {
-    if (item.onShelfAmount === undefined) return "need"; // Don't have it
+  // Helper to calculate status for merged items
+  const getStatus = (item: MergedGroceryItem) => {
+    if (item.onShelfAmount === undefined) return "need"; // Don't have it on shelf
 
-    // Perfect Match (Same Unit)
-    if (item.unit === item.onShelfUnit) {
-      if (item.onShelfAmount >= item.amount) return "have_all"; // Have 150g, need 100g -> OK
-      return "have_partial"; // Have 100g, need 150g -> Buy 50g
+    // If we have multiple different units (e.g. kg and lbs), logic gets hard.
+    // We will check the first matching unit we find.
+    for (const qty of item.quantities) {
+      if (qty.unit === item.onShelfUnit) {
+        if (item.onShelfAmount >= qty.amount) return "have_all";
+        return "have_partial";
+      }
     }
 
-    // Unit Mismatch (Simple check)
     return "have_unit_mismatch";
   };
 
@@ -134,10 +148,28 @@ export default function GroceryList() {
       subtitle="Smart inventory tracking enabled"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        {(Object.entries(groceryList) as [IngredientCategory, GroceryItem[]][])
+        {(
+          Object.entries(groceryList) as [
+            IngredientCategory,
+            MergedGroceryItem[]
+          ][]
+        )
           .filter(([_, items]) => items.length > 0)
           .map(([category, items]) => {
             const config = categoryConfig[category];
+
+            // SORTING LOGIC: Unchecked first, Checked last
+            const sortedItems = [...items].sort((a, b) => {
+              // We use the normalized name as the key
+              const keyA = a.name.toLowerCase();
+              const keyB = b.name.toLowerCase();
+              const checkedA = !!checkedItems[keyA];
+              const checkedB = !!checkedItems[keyB];
+
+              if (checkedA === checkedB) return 0; // Maintain order if same status
+              return checkedA ? 1 : -1; // If A is checked, it goes after B
+            });
+
             return (
               <div key={category} className="floating-card h-fit">
                 <div
@@ -151,16 +183,11 @@ export default function GroceryList() {
                 </div>
 
                 <ul className="space-y-2">
-                  {items.map((item) => {
-                    const key = `${item.name}-${item.unit}`;
+                  {sortedItems.map((item) => {
+                    // Key is now just the name, since we merged units
+                    const key = item.name.toLowerCase();
                     const checked = checkedItems[key];
                     const status = getStatus(item);
-
-                    // Math for partials
-                    const missingAmount =
-                      status === "have_partial"
-                        ? item.amount - (item.onShelfAmount || 0)
-                        : 0;
 
                     return (
                       <li
@@ -173,10 +200,10 @@ export default function GroceryList() {
                             : "hover:bg-white hover:shadow-sm",
                           status === "have_all" &&
                             !checked &&
-                            "bg-green-50 border-green-200 opacity-60", // Dim if we have enough
+                            "bg-green-50 border-green-200 opacity-60",
                           status === "have_partial" &&
                             !checked &&
-                            "bg-amber-50 border-amber-200" // Warn if partial
+                            "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div
@@ -187,7 +214,7 @@ export default function GroceryList() {
                               : "border-muted-foreground/30",
                             status === "have_all" &&
                               !checked &&
-                              "bg-green-200 border-green-300" // Green check for owned
+                              "bg-green-200 border-green-300"
                           )}
                         >
                           {(checked || status === "have_all") && (
@@ -196,7 +223,9 @@ export default function GroceryList() {
                         </div>
 
                         <div className="flex-1">
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium capitalize">
+                            {item.name}
+                          </span>
 
                           {/* STATUS BADGES */}
                           {status === "have_all" && (
@@ -207,33 +236,37 @@ export default function GroceryList() {
                           {status === "have_partial" && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span className="text-xs text-amber-700 font-medium bg-amber-100 px-1.5 rounded-md">
-                                Have {item.onShelfAmount}
-                                {item.unit}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                (Buy {missingAmount}
-                                {item.unit})
+                                Have {item.onShelfAmount} {item.onShelfUnit}
                               </span>
                             </div>
                           )}
                           {status === "have_unit_mismatch" && (
                             <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">
-                              Check Shelf ({item.onShelfAmount}
+                              Check Shelf ({item.onShelfAmount}{" "}
                               {item.onShelfUnit})
                             </span>
                           )}
                         </div>
 
-                        <div className="text-right">
-                          <span
-                            className={cn(
-                              "text-sm font-medium",
-                              status === "have_partial" &&
-                                "text-destructive font-bold"
-                            )}
-                          >
-                            {item.amount} {item.unit}
-                          </span>
+                        <div className="text-right flex flex-col items-end">
+                          {/* Render all merged quantities */}
+                          {item.quantities.map((q, idx) => (
+                            <span
+                              key={idx}
+                              className={cn(
+                                "text-sm font-medium whitespace-nowrap",
+                                status === "have_partial" &&
+                                  "text-destructive font-bold"
+                              )}
+                            >
+                              {idx > 0 && (
+                                <span className="text-muted-foreground mx-1">
+                                  +
+                                </span>
+                              )}
+                              {q.amount} {q.unit}
+                            </span>
+                          ))}
                         </div>
                       </li>
                     );
@@ -244,7 +277,7 @@ export default function GroceryList() {
           })}
       </div>
 
-      {/* 🏠 Smart Shelf Input */}
+      {/* 📦 Smart Shelf Input */}
       <div className="border-t border-dashed border-border pt-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
@@ -299,8 +332,7 @@ export default function GroceryList() {
                   {item.name}
                 </span>
                 <span className="text-xs font-bold text-primary">
-                  {item.amount}
-                  {item.unit}
+                  {item.amount} {item.unit}
                 </span>
                 <button
                   onClick={() => removeShelfItem(item.id)}

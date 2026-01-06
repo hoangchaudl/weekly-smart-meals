@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 import { useRecipes } from "@/context/RecipeContext";
 import { EditRecipeModal } from "./EditRecipeModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-// import { Play } from "lucide-react";
-// import { VideoModal } from "./VideoModal";
 
 interface DishCardProps {
   recipe: Recipe;
@@ -17,7 +15,7 @@ interface DishCardProps {
 }
 
 const categoryEmojis = {
-  protein: "🍗",
+  protein: "🥩",
   vegetables_fruits: "🥦",
   seasonings: "🧂",
   others: "📦",
@@ -33,13 +31,14 @@ export function DishCard({
   const { isOnShelf, deleteRecipe } = useRecipes();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  // const [showVideo, setShowVideo] = useState(false);
 
-  const mealAccent = {
-    breakfast: "meal-accent-breakfast",
-    lunch: "meal-accent-lunch",
-    dinner: "meal-accent-dinner",
-  }[recipe.mealType];
+  const mealAccent =
+    {
+      breakfast: "meal-accent-breakfast",
+      lunch: "meal-accent-lunch",
+      dinner: "meal-accent-dinner",
+      snacks: "meal-accent-lunch",
+    }[recipe.mealType] || "meal-accent-dinner";
 
   const StorageIcon =
     recipe.storageType === "freezer" ? Snowflake : Refrigerator;
@@ -101,7 +100,9 @@ export function DishCard({
           </div>
 
           <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-xl shadow-soft">
-            🍽️
+            {recipe.ingredients[0]
+              ? categoryEmojis[recipe.ingredients[0].category]
+              : "🥘"}
           </div>
         </div>
 
@@ -117,22 +118,6 @@ export function DishCard({
             ))}
           </div>
         )}
-        {/* 
-        {recipe.instructionVideoUrl?.trim() && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowVideo(true);
-            }}
-            className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full 
-               bg-primary/10 text-primary text-sm font-medium 
-               hover:bg-primary/20 transition"
-          >
-            <Play className="w-4 h-4" />
-            Watch Video
-          </button>
-        )} */}
       </div>
 
       <EditRecipeModal
@@ -146,11 +131,6 @@ export function DishCard({
         onClose={() => setIsDeleting(false)}
         onConfirm={() => deleteRecipe(recipe.id)}
       />
-      {/* <VideoModal
-        open={showVideo}
-        url={recipe.instructionVideoUrl || ""}
-        onClose={() => setShowVideo(false)}
-      /> */}
     </>
   );
 }

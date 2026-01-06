@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Recipe } from "@/types/recipe";
 import {
   Dialog,
@@ -12,31 +13,60 @@ import {
   Refrigerator,
   ChevronRight,
   Home,
+  Pencil,
+  Trash2,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRecipes } from "@/context/RecipeContext";
-import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditRecipeModal } from "./EditRecipeModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-import { useState } from "react";
-import { Play } from "lucide-react";
 
 interface RecipeModalProps {
   recipe: Recipe | null;
   open: boolean;
   onClose: () => void;
 }
-const getEmbedUrl = (url: string) => {
-  if (url.includes("youtube.com/watch")) {
-    const id = new URL(url).searchParams.get("v");
-    return id ? `https://www.youtube.com/embed/${id}` : url;
+
+// 🛠️ Helper: Robust check for YouTube links (Case Insensitive)
+const isYoutubeUrl = (url: string) => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.includes("youtube.com") || lower.includes("youtu.be");
+};
+
+// 🛠️ Helper: Converts various YouTube links to Embed format
+const getEmbedUrl = (inputUrl: string) => {
+  try {
+    let url = inputUrl.trim();
+    if (!url.startsWith("http")) url = `https://${url}`;
+
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    // Standard: youtube.com/watch?v=VIDEO_ID
+    if (hostname.includes("youtube.com")) {
+      const v = urlObj.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+
+      // Handle Shorts: youtube.com/shorts/VIDEO_ID
+      if (urlObj.pathname.startsWith("/shorts/")) {
+        const v = urlObj.pathname.split("/")[2]; // /shorts/ID -> ["", "shorts", "ID"]
+        if (v) return `https://www.youtube.com/embed/${v}`;
+      }
+    }
+
+    // Short: youtu.be/VIDEO_ID
+    if (hostname.includes("youtu.be")) {
+      const v = urlObj.pathname.slice(1);
+      if (v) return `https://www.youtube.com/embed/${v}`;
+    }
+
+    return url;
+  } catch (error) {
+    return inputUrl;
   }
-  if (url.includes("youtu.be/")) {
-    const id = url.split("youtu.be/")[1];
-    return `https://www.youtube.com/embed/${id}`;
-  }
-  return url; // mp4 / webm direct links
 };
 
 const categoryColors = {
@@ -54,8 +84,7 @@ const categoryEmojis = {
 };
 
 export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
-  const { isOnShelf } = useRecipes();
-  const { deleteRecipe } = useRecipes();
+  const { isOnShelf, deleteRecipe } = useRecipes();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -67,6 +96,8 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
     isOnShelf(ing.name)
   ).length;
 
+  const videoUrl = recipe.instructionVideoUrl;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-0 shadow-float rounded-3xl p-0">
@@ -77,7 +108,6 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
               {recipe.name}
             </DialogTitle>
 
-            {/* 🔧 CHANGE: edit/delete INSIDE recipe modal */}
             <div className="flex gap-2">
               <Button
                 size="icon"
@@ -134,7 +164,7 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Ingredients */}
           <section>
             <h3 className="font-display font-bold text-lg mb-3 flex items-center gap-2">
@@ -188,32 +218,37 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
                 </div>
               ))}
             </div>
-            {recipe.instructionVideoUrl && (
-              <div className="mt-6">
-                <h3 className="font-display font-bold mb-2 flex items-center gap-2">
-                  <Play className="w-5 h-5 text-primary" />
-                  Watch while cooking
-                </h3>
-
-                <div className="w-full aspect-video rounded-2xl overflow-hidden border bg-black">
-                  {recipe.instructionVideoUrl.includes("youtube") ||
-                  recipe.instructionVideoUrl.includes("youtu.be") ? (
-                    <iframe
-                      src={getEmbedUrl(recipe.instructionVideoUrl)}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <video
-                      src={recipe.instructionVideoUrl}
-                      controls
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              </div>
-            )}
           </section>
+
+          {/* 🎬 Video Section - Youtube Embed */}
+          {videoUrl && (
+            <section className="bg-black/5 rounded-3xl p-4 border border-black/5">
+              <h3 className="font-display font-bold mb-3 flex items-center gap-2">
+                <Play className="w-5 h-5 text-primary fill-primary" />
+                Watch Tutorial
+              </h3>
+
+              <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm relative">
+                {isYoutubeUrl(videoUrl) ? (
+                  <iframe
+                    src={getEmbedUrl(videoUrl)}
+                    className="w-full h-full"
+                    title="Recipe Video"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  // Fallback for non-youtube links (mp4 direct links)
+                  <video
+                    src={videoUrl}
+                    controls
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Storage tip */}
           <div
@@ -233,6 +268,7 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
             </div>
           </div>
         </div>
+
         <EditRecipeModal
           recipe={recipe}
           open={isEditing}
@@ -246,7 +282,7 @@ export function RecipeModal({ recipe, open, onClose }: RecipeModalProps) {
           onConfirm={() => {
             deleteRecipe(recipe.id);
             setIsDeleting(false);
-            onClose(); // close recipe modal after delete
+            onClose();
           }}
         />
       </DialogContent>
